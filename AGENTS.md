@@ -1,0 +1,64 @@
+# Genesis · Supervisor (Figma Make)
+
+Clickable prototype of the **Supervisor** platform for Landlord Service Plans (LSP), built on the client-approved design **"Dashboard Variation 04"** (Figma: Genesis page, node 342:2369, and the "Genesis · Design System" section). React 19 + Vite + TypeScript, running inside Figma Make.
+
+## Do not redesign
+The client has approved this design. When editing:
+- Keep the layout: a 264px white sidebar card on the left (logo, 5 menu groups, live counts, the user at the bottom), with content on the right inside 24px page padding and 20px gaps between blocks.
+- Keep the colours, font, radii and shadows listed below. Use the CSS variables in `src/styles/app.css` and never hard-code new colours.
+- Keep the existing classes and components (`.card`, `.kpi`, `.chip`, `.btn`, `Drawer`, `Modal`, `Tabs` and so on). Add new screens by reusing them.
+- Do not add Tailwind's base reset (preflight). `src/index.css` loads only Tailwind's theme and utilities, on purpose.
+- Tailwind utilities are switched on, so never name a custom class after a Tailwind utility (`outline`, `ring`, `shadow`, `border`, `hidden`…). That is why the outline button uses the class `.btn.line` and the dashboard ring uses `.gring`.
+- Do not swap the icon set (lucide-react, stroke width 1.8) or the font (Montserrat).
+- Images are relative paths under `public/images/` (`images/home1.jpg`). Keep them as normal git files, not LFS.
+- Routing uses `HashRouter`. Paths look like `#/landlords/L1`.
+
+## Design tokens (`src/styles/app.css`)
+| Token | Value |
+|---|---|
+| Font | Montserrat 400/500/600/700/800 (`@fontsource/montserrat`) |
+| Page background | `#F3F5F9` |
+| Surface (cards) | `#FFFFFF`, border `#E9EDF3`, radius 22, padding 20, shadow `0 8px 24px rgba(15,24,40,.04)` |
+| Brand navy | `#153D91` (hover `#0F3279`, subtle `#EEF3FC`) |
+| Deep navy (hero / inverse) | `#001649` |
+| Accent green | `#5BAF00` |
+| Text | primary `#0F1828`, secondary `#475467`, tertiary `#667085`, placeholder `#98A2B3` |
+| Status | ok `#3C7300` / `#E8F4DB` · warning `#B54708` / `#FEF0C7` · error `#C8102E` / `#FDE8EB` · info `#0B6FB8` / `#E0F2FE` |
+| Radius | 6, 8, 10, 12 (buttons and inputs), 14, 20 (sidebar), 22 (cards), 24 (hero), 999 (chips) |
+| Type | H1 24/800 · H2 15/700 · metric 26/800 · body 13/500 · small 12.5/500 · caption 11/500 · hero number 56/800 |
+
+## Structure
+- `src/main.tsx`: entry point. It wraps the app in HashRouter, then StoreProvider, then App, and loads Montserrat, `index.css` and `styles/app.css`.
+- `src/App.tsx`: the login gate (`#/login`), then the sidebar plus the page for the current route.
+- `src/Shell.tsx`: sidebar menu (`NAV`), page header (global search, alerts, calendar), breadcrumbs and Login (sign in, then a 6-digit security code; demo code `123456`; 5 wrong tries lock the account).
+- `src/ui.tsx`: shared UI. Chip, Btn, IBtn, Card, Avatar, Bar, Tabs, MiniSearch, Drawer, Modal, Field, Text, Select, KV, Note, Steps, Toasts, Reason (a modal that requires a reason), Kpi.
+- `src/store.tsx`: shared demo state, plus `go(route, id)`, `toast()` and `log()`. Every action writes to Records & History.
+- `src/data.ts`: sample data. Demo "today" is 15 Oct 2026.
+- `src/pages/`:
+  - `Today.tsx`: the approved dashboard.
+  - `People.tsx`: Team Work, Enquiries, Landlords, Lettings, Tenants.
+  - `Homes.tsx`: Properties, Sign-Ups, Letting Agents, invoice table.
+  - `Work.tsx`: Contractors & Jobs, Inspections, Approvals & Budgets, Safety Checks.
+  - `Money.tsx`: Rent & Invoices, Records & History, Support Access, Reports.
+  - `shared.tsx`: approveJob and shared modals (new landlord, add property, record payment, assign contractor).
+
+## Rules the flows follow (from the client's flow chart)
+- Only the Supervisor creates landlords. Before creating one, check for duplicates. Plans are 12%, 16% and 20%, with job limits of £150, £200 and £300. The login email is sent from Outlook.
+- A job above the landlord's limit goes to Approvals. Approving it takes the cost off the yearly repair budget **once**. Alerts go out at 70%, 90% and 100%.
+- There are two kinds of property:
+  - **Managed:** belongs to a landlord; tenants, rent, safety checks and inspections apply.
+  - **Unmanaged:** belongs to a letting agent; contractor services only, with a quote and then an invoice. The contractor's cost is visible to staff only.
+- Lettings has six stages: Applied, Screening, Viewing, Confirmed, Referencing (done outside Genesis), Approved. Approving creates a tenant account. "Not going ahead" requires a reason.
+- Tenant move-in has eight steps:
+  1. Account created
+  2. Login email sent
+  3. ID checks approved (by the Supervisor)
+  4. Agreement signed by everyone
+  5. First rent and deposit received
+  6. Deposit protected (reference saved)
+  7. Move-in inspection booked
+  8. Active tenant
+- Contractors with an expired certificate are paused and cannot be assigned. Finished jobs need photo proof. Approving a job sends the invoice and locks the record.
+- Rent: staff record what arrived in the bank. Part payments carry forward and trigger a reminder email.
+- Locked records (inspection reports and finished jobs) can only be unlocked with a reason. Earlier versions are kept.
+- Support access is allowed for a set time, can be stopped at any moment, and everything the support team opens is logged.
