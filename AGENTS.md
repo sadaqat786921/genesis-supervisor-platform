@@ -11,12 +11,13 @@ The client has approved this design. When editing:
 - Tailwind utilities are switched on, so never name a custom class after a Tailwind utility (`outline`, `ring`, `shadow`, `border`, `hidden`…). That is why the outline button uses the class `.btn.line` and the dashboard ring uses `.gring`.
 - Do not swap the icon set (lucide-react, stroke width 1.8) or the font (Montserrat).
 - Images are relative paths under `public/images/` (`images/home1.jpg`). Keep them as normal git files, not LFS.
+- Besides React, only two packages are needed: `react-router-dom` and `lucide-react`. If an import fails, add the missing package to package.json — never delete screens or swap libraries.
 - Routing uses `HashRouter`. Paths look like `#/landlords/L1`.
 
 ## Design tokens (`src/styles/app.css`)
 | Token | Value |
 |---|---|
-| Font | Montserrat 400/500/600/700/800 (`@fontsource/montserrat`) |
+| Font | Montserrat 400/500/600/700/800 (self-hosted in `src/fonts`, loaded by `src/styles/fonts.css` — no font package needed) |
 | Page background | `#F3F5F9` |
 | Surface (cards) | `#FFFFFF`, border `#E9EDF3`, radius 22, padding 20, shadow `0 8px 24px rgba(15,24,40,.04)` |
 | Brand navy | `#153D91` (hover `#0F3279`, subtle `#EEF3FC`) |
@@ -28,7 +29,7 @@ The client has approved this design. When editing:
 | Type | H1 24/800 · H2 15/700 · metric 26/800 · body 13/500 · small 12.5/500 · caption 11/500 · hero number 56/800 |
 
 ## Structure
-- `src/main.tsx`: entry point. It wraps the app in HashRouter, then StoreProvider, then App, and loads Montserrat, `index.css` and `styles/app.css`.
+- `src/main.tsx`: entry point. It wraps the app in HashRouter, then StoreProvider, then App, and loads `styles/fonts.css` (Montserrat), `index.css` and `styles/app.css`.
 - `src/App.tsx`: the login gate (`#/login`), then the sidebar plus the page for the current route.
 - `src/Shell.tsx`: sidebar menu (`NAV`), page header (global search, alerts, calendar), breadcrumbs and Login (sign in, then a 6-digit security code; demo code `123456`; 5 wrong tries lock the account).
 - `src/ui.tsx`: shared UI. Chip, Btn, IBtn, Card, Avatar, Bar, Tabs, MiniSearch, Drawer, Modal, Field, Text, Select, KV, Note, Steps, Toasts, Reason (a modal that requires a reason), Kpi.

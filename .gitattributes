@@ -147,3 +147,4 @@
 
 # Genesis: small app images are kept as normal git files (not LFS)
 public/** !filter !diff !merge
+src/fonts/** !filter !diff !merge
