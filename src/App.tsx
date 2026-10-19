@@ -27,10 +27,13 @@ function Platform({ onLogout }: { onLogout: () => void }) {
 export default function App() {
   const [auth, setAuth] = useState(read);
   const nav = useNavigate();
+  const signIn = () => { write(true); setAuth(true); const h = location.hash.replace('#', ''); if (!h || h === '/' || h === '/login') nav('/today', { replace: true }); };
+  if (!auth) return <><Login onDone={signIn} /><Toasts /></>;
   return <>
     <Routes>
-      <Route path="/login" element={auth ? <Navigate to="/today" replace /> : <Login onDone={() => { write(true); setAuth(true); nav('/today'); }} />} />
-      <Route path="/*" element={auth ? <Platform onLogout={() => { write(false); setAuth(false); nav('/login'); }} /> : <Navigate to="/login" replace />} />
+      <Route path="/" element={<Navigate to="/today" replace />} />
+      <Route path="/login" element={<Navigate to="/today" replace />} />
+      <Route path="/*" element={<Platform onLogout={() => { write(false); setAuth(false); nav('/login', { replace: true }); }} />} />
     </Routes>
     <Toasts />
   </>;
