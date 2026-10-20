@@ -36,11 +36,10 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
     <aside className="sidebar" style={collapsed ? { width: 76 } : undefined} aria-label="Main menu">
       <div className="sb-logo">{!collapsed && <img src="images/logo.svg" alt="Landlord Service Plans" />}<button onClick={() => setCollapsed(c => !c)} aria-label="Collapse menu"><PanelLeft size={18} strokeWidth={1.8} /></button></div>
       <nav className="sb-nav">
-        {NAV.map(g => <div key={g.group}>
-          {!collapsed && <div className="sb-group">{g.group}</div>}
+        {NAV.map((g, gi) => <div key={g.group} className={gi > 0 ? 'sb-group' : undefined}>
           {g.items.map(it => { const Ic = it.icon; const n = counts[it.id]; return (
             <button key={it.id} className={`nav${route === it.id ? ' on' : ''}`} onClick={() => go(it.id)} title={it.label} aria-current={route === it.id ? 'page' : undefined}>
-              <Ic size={20} strokeWidth={1.8} />{!collapsed && <span>{it.label}</span>}{!collapsed && !!n && <span className="count" style={it.id === 'safety' ? { background: 'var(--err-bg)', color: 'var(--err)' } : undefined}>{n}</span>}
+              <Ic size={20} strokeWidth={1.8} />{!collapsed && <span>{it.label}</span>}{!collapsed && !!n && <span className="count">{n}</span>}
             </button>); })}
         </div>)}
       </nav>
@@ -82,7 +81,6 @@ export function PageHeader({ title, sub, action, crumbs }: { title: ReactNode; s
       <div className="grow">
         {crumbs && <div className="crumbs">{crumbs.map((c, i) => <span key={i} className="flex" style={{ gap: 6 }}>{i > 0 && <ChevronRight size={12} />}{c.onClick ? <button onClick={c.onClick}>{c.label}</button> : <span>{c.label}</span>}</span>)}</div>}
         <h1 className="h1">{title}</h1>
-        {sub && <div className="small" style={{ marginTop: 4 }}>{sub}</div>}
       </div>
       <div style={{ position: 'relative' }}>
         <label className="search"><Search size={18} strokeWidth={1.8} /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search landlords, tenants, homes, jobs" aria-label="Search everything" /><span className="kbd">⌘K</span></label>
