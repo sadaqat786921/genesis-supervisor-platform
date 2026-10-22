@@ -3,22 +3,24 @@ import * as D from './data';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 export type Route =
-  | 'today' | 'team' | 'enquiries' | 'landlords' | 'lettings' | 'tenants' | 'properties' | 'signups' | 'agents'
-  | 'jobs' | 'inspections' | 'approvals' | 'safety' | 'rent' | 'records' | 'support' | 'reports';
+  | 'today' | 'team' | 'enquiries' | 'landlords' | 'lettings' | 'tenants' | 'properties' | 'signups' | 'clients'
+  | 'contractors' | 'jobs' | 'inspections' | 'approvals' | 'safety' | 'rent' | 'records' | 'support' | 'reports';
 
-export const ROUTES: Route[] = ['today', 'team', 'enquiries', 'landlords', 'lettings', 'tenants', 'properties', 'signups', 'agents', 'jobs', 'inspections', 'approvals', 'safety', 'rent', 'records', 'support', 'reports'];
+export const ROUTES: Route[] = ['today', 'team', 'enquiries', 'landlords', 'lettings', 'tenants', 'properties', 'signups', 'clients', 'contractors', 'jobs', 'inspections', 'approvals', 'safety', 'rent', 'records', 'support', 'reports'];
 type Setter<T> = (fn: (prev: T[]) => T[]) => void;
+export type PayoutStatus = 'Scheduled' | 'Paid' | 'On hold';
 interface Store {
   route: Route; detail: string | null; go: (r: Route, detail?: string | null) => void;
   toast: (msg: string) => void; toasts: { id: number; msg: string }[];
   log: (what: string, area: string) => void;
+  staff: D.Staff[]; setStaff: Setter<D.Staff>;
   landlords: D.Landlord[]; setLandlords: Setter<D.Landlord>;
   properties: D.Property[]; setProperties: Setter<D.Property>;
   enquiries: D.Enquiry[]; setEnquiries: Setter<D.Enquiry>;
   applicants: D.Applicant[]; setApplicants: Setter<D.Applicant>;
   tenants: D.Tenant[]; setTenants: Setter<D.Tenant>;
   signups: D.SignUp[]; setSignups: Setter<D.SignUp>;
-  agents: D.Agent[]; setAgents: Setter<D.Agent>;
+  clients: D.Client[]; setClients: Setter<D.Client>;
   contractors: D.Contractor[]; setContractors: Setter<D.Contractor>;
   jobs: D.Job[]; setJobs: Setter<D.Job>;
   inspections: D.Inspection[]; setInspections: Setter<D.Inspection>;
@@ -29,14 +31,14 @@ interface Store {
   activity: D.Activity[];
   locked: D.LockedRecord[]; setLocked: Setter<D.LockedRecord>;
   support: D.SupportReq[]; setSupport: Setter<D.SupportReq>;
-  search: string; setSearch: (s: string) => void;
+  payouts: Record<string, PayoutStatus>; setPayout: (id: string, st: PayoutStatus) => void;
 }
 const Ctx = createContext<Store>(null as unknown as Store);
 export const useStore = () => useContext(Ctx);
 
 function useList<T>(init: T[]): [T[], Setter<T>] {
   const [v, setV] = useState<T[]>(init);
-  return [v, (fn) => setV(prev => fn(prev))];
+  return [v, useCallback((fn: (prev: T[]) => T[]) => setV(prev => fn(prev)), [])];
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
@@ -46,14 +48,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const detail = parts[1] ? decodeURIComponent(parts[1]) : null;
   const [toasts, setToasts] = useState<{ id: number; msg: string }[]>([]);
   const [activity, setActivity] = useState<D.Activity[]>(D.ACTIVITY);
-  const [search, setSearch] = useState('');
+  const [staff, setStaff] = useList(D.STAFF);
   const [landlords, setLandlords] = useList(D.LANDLORDS);
   const [properties, setProperties] = useList(D.PROPERTIES);
   const [enquiries, setEnquiries] = useList(D.ENQUIRIES);
   const [applicants, setApplicants] = useList(D.APPLICANTS);
   const [tenants, setTenants] = useList(D.TENANTS);
   const [signups, setSignups] = useList(D.SIGNUPS);
-  const [agents, setAgents] = useList(D.AGENTS);
+  const [clients, setClients] = useList(D.CLIENTS);
   const [contractors, setContractors] = useList(D.CONTRACTORS);
   const [jobs, setJobs] = useList(D.JOBS);
   const [inspections, setInspections] = useList(D.INSPECTIONS);
@@ -63,26 +65,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useList(D.TASKS);
   const [locked, setLocked] = useList(D.LOCKED);
   const [support, setSupport] = useList(D.SUPPORT);
+  const [payouts, setPayouts] = useState<Record<string, PayoutStatus>>({ L2: 'On hold', L6: 'Paid' });
 
-  const go = useCallback((r: Route, d: string | null = null) => { nav('/' + r + (d ? '/' + encodeURIComponent(d) : '')); setSearch(''); window.scrollTo({ top: 0 }); }, [nav]);
+  const go = useCallback((r: Route, d: string | null = null) => { nav('/' + r + (d ? '/' + encodeURIComponent(d) : '')); window.scrollTo({ top: 0 }); }, [nav]);
   const toast = useCallback((msg: string) => {
     const id = Date.now() + Math.random();
     setToasts(t => [...t, { id, msg }]);
     setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 2800);
   }, []);
   const log = useCallback((what: string, area: string) => {
-    const now = new Date();
-    const hh = String(now.getHours()).padStart(2, '0'), mm = String(now.getMinutes()).padStart(2, '0');
-    setActivity(a => [{ id: 'H' + Date.now(), when: `Today ${hh}:${mm}`, who: 'Sarah Khan', what, area }, ...a]);
+    setActivity(a => [{ id: 'H' + Date.now() + Math.random(), at: D.nowStamp(), who: 'Sarah Khan', what, area }, ...a]);
   }, []);
+  const setPayout = useCallback((id: string, st: PayoutStatus) => setPayouts(p => ({ ...p, [id]: st })), []);
 
   const value = useMemo(() => ({
-    route, detail, go, toast, toasts, log, activity, search, setSearch,
-    landlords, setLandlords, properties, setProperties, enquiries, setEnquiries, applicants, setApplicants, tenants, setTenants,
-    signups, setSignups, agents, setAgents, contractors, setContractors, jobs, setJobs, inspections, setInspections, safety, setSafety,
-    rent, setRent, invoices, setInvoices, tasks, setTasks, locked, setLocked, support, setSupport,
-  }), [route, detail, go, toasts, activity, search, landlords, properties, enquiries, applicants, tenants, signups, agents, contractors, jobs, inspections, safety, rent, invoices, tasks, locked, support]); // eslint-disable-line
-  return <Ctx.Provider value={value as Store}>{children}</Ctx.Provider>;
+    route, detail, go, toast, toasts, log, activity,
+    staff, setStaff, landlords, setLandlords, properties, setProperties, enquiries, setEnquiries, applicants, setApplicants, tenants, setTenants,
+    signups, setSignups, clients, setClients, contractors, setContractors, jobs, setJobs, inspections, setInspections, safety, setSafety,
+    rent, setRent, invoices, setInvoices, tasks, setTasks, locked, setLocked, support, setSupport, payouts, setPayout,
+  }), [route, detail, go, toast, toasts, log, activity, staff, landlords, properties, enquiries, applicants, tenants, signups, clients, contractors, jobs, inspections, safety, rent, invoices, tasks, locked, support, payouts, setPayout, setStaff, setLandlords, setProperties, setEnquiries, setApplicants, setTenants, setSignups, setClients, setContractors, setJobs, setInspections, setSafety, setRent, setInvoices, setTasks, setLocked, setSupport]);
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
 // ---------- lookups ----------
@@ -93,19 +95,31 @@ export function useLookups() {
   return {
     prop: (id?: string) => s.properties.find(p => p.id === id),
     landlord: (id?: string) => s.landlords.find(l => l.id === id),
-    agent: (id?: string) => s.agents.find(a => a.id === id),
+    client: (id?: string) => s.clients.find(a => a.id === id),
     contractor: (id?: string) => s.contractors.find(c => c.id === id),
     tenant: (id?: string) => s.tenants.find(t => t.id === id),
-    ownerName: (p?: D.Property) => !p ? '' : p.managed ? (s.landlords.find(l => l.id === p.owner)?.name ?? '') : (s.agents.find(a => a.id === p.owner)?.name ?? ''),
+    ownerName: (p?: D.Property) => !p ? '' : p.managed ? (s.landlords.find(l => l.id === p.owner)?.name ?? '') : (s.clients.find(a => a.id === p.owner)?.name ?? ''),
+    admins: s.staff.filter(x => x.role === 'Office Admin' && x.active),
   };
 }
+export type Lookups = ReturnType<typeof useLookups>;
+
+/** Landlord budget is the sum of each property's own yearly repair budget. */
+export function landlordBudget(s: Store, id: string) {
+  const ps = s.properties.filter(p => p.managed && p.owner === id);
+  const budget = ps.reduce((a, p) => a + p.budget, 0), used = ps.reduce((a, p) => a + p.used, 0);
+  return { budget, used, left: budget - used, pct: budget ? Math.round(used / budget * 100) : 0, props: ps };
+}
+export const budgetTone = (pct: number) => pct >= 90 ? 'err' as const : pct >= 70 ? 'warn' as const : 'ok' as const;
+
 export const rentStatus = (r: D.RentRow): { label: string; tone: D.Tone } => {
   if (r.paid >= r.amount) return { label: 'Paid', tone: 'ok' };
-  const day = parseInt(r.due);
-  const isNov = r.due.includes('Nov');
-  const late = !isNov && day < D.RENT_LATE_DAY;
-  if (r.paid > 0) return { label: late ? 'Part-paid · late' : 'Part-paid', tone: late ? 'err' : 'warn' };
-  if (isNov || day > D.RENT_LATE_DAY) return { label: 'Due', tone: 'neutral' };
-  if (day === D.RENT_LATE_DAY) return { label: 'Due today', tone: 'info' };
-  return { label: 'Late', tone: 'err' };
+  const d = D.daysFrom(r.due);
+  if (r.paid > 0) return d < 0 ? { label: 'Part-paid · late', tone: 'err' } : { label: 'Part-paid', tone: 'warn' };
+  if (d < 0) return { label: `Late · ${-d} days`, tone: 'err' };
+  if (d === 0) return { label: 'Due today', tone: 'info' };
+  return { label: 'Due ' + r.due.replace(' 2026', ''), tone: 'neutral' };
 };
+
+/** Split "15 Oct 2026, 09:12" into date and time parts for tables. */
+export const splitAt = (at: string) => { const [d, t] = at.split(', '); return { d, t: t ?? '' }; };

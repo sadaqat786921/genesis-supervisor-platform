@@ -35,13 +35,16 @@ The client has approved this design. When editing:
 - `src/ui.tsx`: shared UI. Chip, Btn, IBtn, Card, Avatar, Bar, Tabs, MiniSearch, Drawer, Modal, Field, Text, Select, KV, Note, Steps, Toasts, Reason (a modal that requires a reason), Kpi.
 - `src/store.tsx`: shared demo state, plus `go(route, id)`, `toast()` and `log()`. Every action writes to Records & History.
 - `src/data.ts`: sample data. Demo "today" is 15 Oct 2026.
-- `src/pages/`:
+- `src/pages/` (every list row or card opens its own detail page at `#/<section>/<id>`):
   - `Today.tsx`: the approved dashboard.
-  - `People.tsx`: Team Work, Enquiries, Landlords, Lettings, Tenants.
-  - `Homes.tsx`: Properties, Sign-Ups, Letting Agents, invoice table.
-  - `Work.tsx`: Contractors & Jobs, Inspections, Approvals & Budgets, Safety Checks.
-  - `Money.tsx`: Rent & Invoices, Records & History, Support Access, Reports.
-  - `shared.tsx`: approveJob and shared modals (new landlord, add property, record payment, assign contractor).
+  - `Team.tsx`: Team Work KPIs, Office Admin cards and profile pages (tasks, homes, disable/enable).
+  - `Enquiries.tsx`: list + detail (assign → contacted → landlord created / moved to Lettings, close with confirmation).
+  - `Landlords.tsx`: list + detail (properties, safety checks with done date/time, inspections, jobs, invoices, communication).
+  - `Lettings.tsx`: 7-stage kanban + applicant detail page.
+  - `Tenants.tsx`: Live / Moving out / Moved out + tenant profile (rent, KYC, home, communication, issues, move-out).
+  - `Properties.tsx`, `SignUps.tsx`, `Clients.tsx` (letting agents), `Contractors.tsx`, `Jobs.tsx` (job page shared with Clients), `Inspections.tsx`, `Approvals.tsx`, `Safety.tsx` (Compliance Centre), `Rent.tsx`, `Records.tsx` (Records + Support Access), `Reports.tsx`.
+  - `shared.tsx`: flow helpers (approveJob, invoices) and shared modals. `tables.tsx`: shared certificate, inspection, job and invoice tables.
+- `src/ui.tsx` also has the detail-page blocks: DetailHead, HSteps (horizontal steps), ActionCard ("Next step"), Stat, PageTabs, Timeline, CommsLog (calls/emails/notes with date and time), UploadModal, PhotoPicker.
 
 ## Rules the flows follow (from the client's flow chart)
 - Only the Supervisor creates landlords. Before creating one, check for duplicates. Plans are 12%, 16% and 20%, with job limits of £150, £200 and £300. The login email is sent from Outlook.
@@ -49,16 +52,11 @@ The client has approved this design. When editing:
 - There are two kinds of property:
   - **Managed:** belongs to a landlord; tenants, rent, safety checks and inspections apply.
   - **Unmanaged:** belongs to a letting agent; contractor services only, with a quote and then an invoice. The contractor's cost is visible to staff only.
-- Lettings has six stages: Applied, Screening, Viewing, Confirmed, Referencing (done outside Genesis), Approved. Approving creates a tenant account. "Not going ahead" requires a reason.
-- Tenant move-in has eight steps:
-  1. Account created
-  2. Login email sent
-  3. ID checks approved (by the Supervisor)
-  4. Agreement signed by everyone
-  5. First rent and deposit received
-  6. Deposit protected (reference saved)
-  7. Move-in inspection booked
-  8. Active tenant
+- Lettings has seven stages: Applied (assign an Office Admin) → Contact (calls/emails logged, then portal login sent) → Screening (KYC uploaded on the portal, verified one by one, more documents can be asked for, profile approved or rejected) → Deposit & referencing (holding deposit, agreement signed, outside referencing) → Supervisor review → Move-in (date and time booked with the inspection) → Moved in (tenant account created). "Not going ahead" requires a reason.
+- Tenants are Live, Moving out or Moved out. Move-out: notice → inspection booked → inspection done → deposit returned → moved out.
+- Each property has its own yearly repair budget; a landlord's budget is the sum of their properties.
+- Letting agents are called Clients. Contractors and Jobs are separate sidebar items.
+- Every history line shows the date and time.
 - Contractors with an expired certificate are paused and cannot be assigned. Finished jobs need photo proof. Approving a job sends the invoice and locks the record.
 - Rent: staff record what arrived in the bank. Part payments carry forward and trigger a reminder email.
 - Locked records (inspection reports and finished jobs) can only be unlocked with a reason. Earlier versions are kept.

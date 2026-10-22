@@ -1,16 +1,17 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react';
 import {
-  LayoutDashboard, Users, Mail, User, KeyRound, UserCheck, Home, UserPlus, Briefcase, Wrench, ClipboardCheck,
+  LayoutDashboard, Users, Mail, User, KeyRound, UserCheck, Home, UserPlus, Briefcase, Wrench, ClipboardCheck, HardHat, ArrowLeft,
   CircleCheck, ShieldCheck, PoundSterling, History, Lock, FileBarChart, PanelLeft, LogOut, Search, Bell, CalendarDays, ChevronRight, ArrowRight, Eye, EyeOff, ShieldAlert,
 } from 'lucide-react';
-import { useStore, useLookups, rentStatus, type Route } from './store';
-import { Btn, Note } from './ui';
+import { useStore, useLookups, type Route } from './store';
+import { LET_STAGES, daysFrom } from './data';
+import { Btn, IBtn, Note } from './ui';
 
 export const NAV: { group: string; items: { id: Route; label: string; icon: typeof Home }[] }[] = [
   { group: 'Overview', items: [{ id: 'today', label: 'Today', icon: LayoutDashboard }, { id: 'team', label: 'Team Work', icon: Users }, { id: 'enquiries', label: 'Enquiries', icon: Mail }] },
   { group: 'Homes & People', items: [{ id: 'landlords', label: 'Landlords', icon: User }, { id: 'lettings', label: 'Lettings', icon: KeyRound }, { id: 'tenants', label: 'Tenants', icon: UserCheck }, { id: 'properties', label: 'Properties', icon: Home }] },
-  { group: 'Partners & Work', items: [{ id: 'signups', label: 'Sign-Ups', icon: UserPlus }, { id: 'agents', label: 'Letting Agents', icon: Briefcase }, { id: 'jobs', label: 'Contractors & Jobs', icon: Wrench }, { id: 'inspections', label: 'Inspections', icon: ClipboardCheck }] },
-  { group: 'Checks & Money', items: [{ id: 'approvals', label: 'Approvals & Budgets', icon: CircleCheck }, { id: 'safety', label: 'Safety Checks', icon: ShieldCheck }, { id: 'rent', label: 'Rent & Invoices', icon: PoundSterling }] },
+  { group: 'Partners & Work', items: [{ id: 'signups', label: 'Sign-Ups', icon: UserPlus }, { id: 'clients', label: 'Clients', icon: Briefcase }, { id: 'contractors', label: 'Contractors', icon: HardHat }, { id: 'jobs', label: 'Jobs', icon: Wrench }, { id: 'inspections', label: 'Inspections', icon: ClipboardCheck }] },
+  { group: 'Checks & Money', items: [{ id: 'approvals', label: 'Approvals & Budgets', icon: CircleCheck }, { id: 'safety', label: 'Safety & Compliance', icon: ShieldCheck }, { id: 'rent', label: 'Rent & Invoices', icon: PoundSterling }] },
   { group: 'Records', items: [{ id: 'records', label: 'Records & History', icon: History }, { id: 'support', label: 'Support Access', icon: Lock }, { id: 'reports', label: 'Reports', icon: FileBarChart }] },
 ];
 export const LABEL: Record<Route, string> = Object.fromEntries(NAV.flatMap(g => g.items.map(i => [i.id, i.label]))) as Record<Route, string>;
@@ -19,13 +20,14 @@ const GROUP: Record<Route, string> = Object.fromEntries(NAV.flatMap(g => g.items
 export function useCounts() {
   const s = useStore();
   return {
-    enquiries: s.enquiries.filter(e => e.status === 'New').length,
-    tenants: s.tenants.filter(t => t.idDocs !== 'Approved').length,
+    enquiries: s.enquiries.filter(e => e.stage === 'New').length,
+    lettings: s.applicants.filter(a => !a.rejected && (a.stage === 4 || (a.stage === 0 && !a.admin))).length,
+    tenants: s.tenants.filter(t => t.status === 'Moving out').length,
     signups: s.signups.filter(x => x.status === 'Waiting').length,
+    jobs: s.jobs.filter(j => j.urgent && !['Approved', 'Invoiced', 'Declined'].includes(j.status)).length,
     approvals: s.jobs.filter(j => j.status === 'Waiting approval').length,
-    safety: s.safety.filter(c => c.status !== 'Valid').length,
-    rentLate: s.rent.filter(r => rentStatus(r).tone === 'err').length,
-  } as Partial<Record<Route | 'rentLate', number>>;
+    safety: s.safety.filter(c => c.status === 'Overdue' || c.status === 'Missing').length,
+  } as Partial<Record<Route, number>>;
 }
 
 export function Sidebar({ onLogout }: { onLogout: () => void }) {
@@ -48,7 +50,7 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
   );
 }
 
-export function PageHeader({ title, sub, action, crumbs }: { title: ReactNode; sub?: ReactNode; action?: ReactNode; crumbs?: { label: string; onClick?: () => void }[] }) {
+export function PageHeader({ title, action, crumbs, back }: { title: ReactNode; sub?: ReactNode; action?: ReactNode; crumbs?: { label: string; onClick?: () => void }[]; back?: () => void }) {
   const s = useStore();
   const L = useLookups();
   const [q, setQ] = useState('');
@@ -58,32 +60,36 @@ export function PageHeader({ title, sub, action, crumbs }: { title: ReactNode; s
     const t = q.trim().toLowerCase(); if (t.length < 2) return [];
     const r: { label: string; sub: string; go: () => void }[] = [];
     s.landlords.filter(x => x.name.toLowerCase().includes(t)).forEach(x => r.push({ label: x.name, sub: 'Landlord · ' + x.plan + '% plan', go: () => s.go('landlords', x.id) }));
-    s.tenants.filter(x => x.name.toLowerCase().includes(t)).forEach(x => r.push({ label: x.name, sub: 'Tenant · ' + (L.prop(x.property)?.address ?? ''), go: () => s.go('tenants', x.id) }));
+    s.tenants.filter(x => x.name.toLowerCase().includes(t)).forEach(x => r.push({ label: x.name, sub: 'Tenant · ' + x.status + ' · ' + (L.prop(x.property)?.address ?? ''), go: () => s.go('tenants', x.id) }));
+    s.applicants.filter(x => !x.tenant && x.name.toLowerCase().includes(t)).forEach(x => r.push({ label: x.name, sub: 'Applicant · ' + LET_STAGES[x.stage], go: () => s.go('lettings', x.id) }));
     s.properties.filter(x => (x.address + ' ' + x.area).toLowerCase().includes(t)).forEach(x => r.push({ label: x.address, sub: (x.managed ? 'Managed' : 'Unmanaged') + ' · ' + x.area, go: () => s.go('properties', x.id) }));
     s.jobs.filter(x => x.title.toLowerCase().includes(t)).forEach(x => r.push({ label: x.title, sub: 'Job · ' + (L.prop(x.property)?.address ?? ''), go: () => s.go('jobs', x.id) }));
-    s.contractors.filter(x => x.name.toLowerCase().includes(t)).forEach(x => r.push({ label: x.name, sub: 'Contractor · ' + x.trade, go: () => s.go('jobs') }));
-    s.agents.filter(x => x.name.toLowerCase().includes(t)).forEach(x => r.push({ label: x.name, sub: 'Letting agent', go: () => s.go('agents', x.id) }));
+    s.contractors.filter(x => x.name.toLowerCase().includes(t)).forEach(x => r.push({ label: x.name, sub: 'Contractor · ' + x.trade, go: () => s.go('contractors', x.id) }));
+    s.clients.filter(x => x.name.toLowerCase().includes(t)).forEach(x => r.push({ label: x.name, sub: 'Client', go: () => s.go('clients', x.id) }));
+    s.enquiries.filter(x => x.name.toLowerCase().includes(t)).forEach(x => r.push({ label: x.name, sub: 'Enquiry · ' + x.stage, go: () => s.go('enquiries', x.id) }));
     return r.slice(0, 8);
   }, [q, s, L]);
   const notes = [
     ...s.jobs.filter(j => j.urgent && j.status === 'New').map(j => ({ t: 'Emergency: ' + j.title, d: L.prop(j.property)?.address ?? '', r: 'jobs' as Route, id: j.id, tone: 'err' })),
+    ...s.applicants.filter(a => a.stage === 4 && !a.rejected).map(a => ({ t: 'Ready for your review: ' + a.name, d: L.prop(a.property)?.address ?? '', r: 'lettings' as Route, id: a.id, tone: 'brand' })),
     ...s.signups.filter(x => x.status === 'Waiting').map(x => ({ t: 'New sign-up: ' + x.name, d: x.kind, r: 'signups' as Route, id: x.id, tone: 'info' })),
-    ...s.enquiries.filter(e => e.status === 'New').map(e => ({ t: 'New enquiry: ' + e.name, d: e.about, r: 'enquiries' as Route, id: e.id, tone: 'info' })),
+    ...s.enquiries.filter(e => e.stage === 'New').map(e => ({ t: 'New enquiry: ' + e.name, d: e.about, r: 'enquiries' as Route, id: e.id, tone: 'info' })),
     ...s.support.filter(x => x.status === 'Waiting').map(x => ({ t: 'Support access requested', d: x.from, r: 'support' as Route, id: x.id, tone: 'warn' })),
   ];
   const cal = [
-    ...s.inspections.filter(i => i.status !== 'Locked').map(i => ({ d: i.date, t: i.kind + ' inspection', p: L.prop(i.property)?.address ?? '', r: 'inspections' as Route })),
-    ...s.safety.filter(c => c.days < 31 && c.status !== 'Valid').map(c => ({ d: c.expires.replace(' 2026', ''), t: c.kind + ' ends', p: L.prop(c.property)?.address ?? '', r: 'safety' as Route })),
-    ...s.applicants.filter(a => a.viewing && a.stage === 2).map(a => ({ d: a.viewing!.split(',')[0], t: 'Viewing · ' + a.name, p: L.prop(a.property)?.address ?? '', r: 'lettings' as Route })),
-  ].slice(0, 7);
+    ...s.inspections.filter(i => i.status !== 'Locked' && daysFrom(i.date) >= 0).map(i => ({ d: i.date, t: `${i.kind} inspection · ${i.time}`, p: L.prop(i.property)?.address ?? '', r: 'inspections' as Route, id: i.id })),
+    ...s.applicants.filter(a => a.moveInAt && a.stage === 5).map(a => ({ d: a.moveInAt!.split(',')[0], t: 'Move-in · ' + a.name, p: L.prop(a.property)?.address ?? '', r: 'lettings' as Route, id: a.id })),
+    ...s.safety.filter(c => c.days >= 0 && c.days < 31).map(c => ({ d: c.expires, t: c.kind + ' ends', p: L.prop(c.property)?.address ?? '', r: 'safety' as Route, id: c.id })),
+  ].sort((a, b) => daysFrom(a.d) - daysFrom(b.d)).slice(0, 7);
   return (
     <header className="header">
+      {back && <IBtn icon={<ArrowLeft size={18} />} onClick={back} label="Back" />}
       <div className="grow">
         {crumbs && <div className="crumbs">{crumbs.map((c, i) => <span key={i} className="flex" style={{ gap: 6 }}>{i > 0 && <ChevronRight size={12} />}{c.onClick ? <button onClick={c.onClick}>{c.label}</button> : <span>{c.label}</span>}</span>)}</div>}
         <h1 className="h1">{title}</h1>
       </div>
-      <div style={{ position: 'relative' }}>
-        <label className="search"><Search size={18} strokeWidth={1.8} /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search landlords, tenants, homes, jobs" aria-label="Search everything" /><span className="kbd">⌘K</span></label>
+      <div className="searchwrap">
+        <label className="search"><Search size={18} strokeWidth={1.8} /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search people, homes, jobs" aria-label="Search everything" /><span className="kbd">⌘K</span></label>
         {results.length > 0 && <div className="pop" style={{ left: 0, right: 'auto', width: 300 }}>{results.map((r, i) => <button key={i} className="item click" style={{ padding: '8px 10px' }} onClick={() => { setQ(''); r.go(); }}><div className="stack"><b style={{ fontSize: 12.5 }}>{r.label}</b><span className="caption">{r.sub}</span></div></button>)}</div>}
       </div>
       <div style={{ position: 'relative' }} ref={ref}>
@@ -95,7 +101,7 @@ export function PageHeader({ title, sub, action, crumbs }: { title: ReactNode; s
           {notes.map((n, i) => <button key={i} className="item click" style={{ padding: '8px 10px' }} onClick={() => { setPop(''); s.go(n.r, n.id); }}><span className={`tile t-${n.tone}`} style={{ width: 30, height: 30 }}><Bell size={15} /></span><div className="stack grow"><b style={{ fontSize: 12.5 }}>{n.t}</b><span className="caption">{n.d}</span></div><ArrowRight size={14} color="#98A2B3" /></button>)}
           {!notes.length && <div className="empty">You are all caught up.</div>}</div>}
         {pop === 'cal' && <div className="pop"><b className="h2" style={{ padding: '2px 4px 6px' }}>Coming up</b>
-          {cal.map((c, i) => <button key={i} className="item click" style={{ padding: '8px 10px' }} onClick={() => { setPop(''); s.go(c.r); }}><span className="datetile t-info" style={{ width: 40, height: 42 }}><b style={{ fontSize: 14 }}>{c.d.split(' ')[0]}</b><span>{(c.d.split(' ')[1] || '').toUpperCase()}</span></span><div className="stack"><b style={{ fontSize: 12.5 }}>{c.t}</b><span className="caption">{c.p}</span></div></button>)}</div>}
+          {cal.map((c, i) => { const [dd, mm] = c.d.split(' '); return <button key={i} className="item click" style={{ padding: '8px 10px' }} onClick={() => { setPop(''); s.go(c.r, c.id); }}><span className="datetile t-info" style={{ width: 40, height: 42 }}><b style={{ fontSize: 14 }}>{dd}</b><span>{(mm || '').toUpperCase()}</span></span><div className="stack"><b style={{ fontSize: 12.5 }}>{c.t}</b><span className="caption">{c.p}</span></div></button>; })}</div>}
       </div>
       {action}
     </header>
