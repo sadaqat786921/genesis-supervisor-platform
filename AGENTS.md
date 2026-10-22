@@ -30,6 +30,7 @@ The client has approved this design. When editing:
 
 ## Structure
 - `src/main.tsx`: entry point. It wraps the app in HashRouter, then StoreProvider, then App, and loads `styles/fonts.css` (Montserrat), `index.css` and `styles/app.css`.
+- `src/pages/Landing.tsx`: public website at `#/home` (Services, Plans, How it works, About, Contact; Log in and Sign up open a "Coming soon" modal). Styles are the `.lp-` section at the end of `app.css`.
 - `src/App.tsx`: the login gate (`#/login`), then the sidebar plus the page for the current route.
 - `src/Shell.tsx`: sidebar menu (`NAV`), page header (global search, alerts, calendar), breadcrumbs and Login (sign in, then a 6-digit security code; demo code `123456`; 5 wrong tries lock the account).
 - `src/ui.tsx`: shared UI. Chip, Btn, IBtn, Card, Avatar, Bar, Tabs, MiniSearch, Drawer, Modal, Field, Text, Select, KV, Note, Steps, Toasts, Reason (a modal that requires a reason), Kpi.

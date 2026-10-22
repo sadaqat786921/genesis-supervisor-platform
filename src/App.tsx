@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import Landing from './pages/Landing';
 import { useStore } from './store';
 import { Sidebar, Login } from './Shell';
 import { Toasts } from './ui';
@@ -39,6 +40,8 @@ function Platform({ onLogout }: { onLogout: () => void }) {
 export default function App() {
   const [auth, setAuth] = useState(read);
   const nav = useNavigate();
+  const loc = useLocation();
+  if (loc.pathname === '/home') return <Landing />;
   const signIn = () => { write(true); setAuth(true); const h = location.hash.replace('#', ''); if (!h || h === '/' || h === '/login') nav('/today', { replace: true }); };
   if (!auth) return <><Login onDone={signIn} /><Toasts /></>;
   return <>
