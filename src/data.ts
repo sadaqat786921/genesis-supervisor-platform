@@ -351,3 +351,8 @@ export const SUPPORT: SupportReq[] = [
 export const RENT_CHART = [{ m: 'May', v: 41.2, due: 43.0 }, { m: 'Jun', v: 43.8, due: 45.1 }, { m: 'Jul', v: 44.1, due: 45.6 }, { m: 'Aug', v: 46.0, due: 47.2 }, { m: 'Sep', v: 47.3, due: 48.9 }, { m: 'Oct', v: 48.2, due: 51.3 }];
 export const JOBS_CHART = [{ m: 'May', done: 21, late: 3 }, { m: 'Jun', done: 25, late: 2 }, { m: 'Jul', done: 19, late: 4 }, { m: 'Aug', done: 28, late: 2 }, { m: 'Sep', done: 31, late: 3 }, { m: 'Oct', done: 14, late: 1 }];
 export const SPEND_CHART = [{ m: 'May', v: 3.1 }, { m: 'Jun', v: 4.4 }, { m: 'Jul', v: 2.9 }, { m: 'Aug', v: 5.2 }, { m: 'Sep', v: 4.8 }, { m: 'Oct', v: 2.6 }];
+
+/* ---------- property management plans (saved snapshots, never changed after saving) ---------- */
+export interface PlanTable { title: string; cols: string[]; rows: string[][]; empty: string }
+export interface PlanData { ref: string; address: string; area: string; landlord: string[]; admin: string; overview: [string, string][]; tables: PlanTable[]; missing: { text: string; blocks: boolean }[] }
+export interface PlanVersion { id: string; property: string; version: number; at: string; by: string; data: PlanData }

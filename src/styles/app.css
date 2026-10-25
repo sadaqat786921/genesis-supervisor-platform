@@ -766,3 +766,11 @@ tr.static { cursor: default; } tr.static:hover td { background: none; }
   body.printdoc .modal { max-height: none; overflow: visible; box-shadow: none; }
   body.printdoc .doc { border: 0; box-shadow: none; page-break-after: always; }
 }
+/* property management plan */
+.plan-src { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.plan-src > div { display: flex; flex-direction: column; gap: 4px; padding: 10px; border: 1px solid var(--border-default); border-radius: var(--r-md); }
+.plan-src b { font-size: 12.5px; }
+.doc-kv.two { grid-template-columns: 170px 1fr; }
+.doc-t.sm td, .doc-t.sm th { padding: 7px 8px; font-size: 11.5px; }
+.doc-t td.nr { color: var(--warn); font-style: italic; }
+@media (max-width: 760px) { .plan-src { grid-template-columns: 1fr 1fr; } }

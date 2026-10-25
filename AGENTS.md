@@ -44,6 +44,8 @@ The client has approved this design. When editing:
   - `Lettings.tsx`: 7-stage kanban + applicant detail page.
   - `Tenants.tsx`: Live / Moving out / Moved out + tenant profile (rent, KYC, home, communication, issues, move-out).
   - `Properties.tsx`, `SignUps.tsx`, `Clients.tsx` (letting agents), `Contractors.tsx`, `Jobs.tsx` (job page shared with Clients), `Inspections.tsx`, `Approvals.tsx`, `Safety.tsx` (Compliance Centre), `Rent.tsx`, `Records.tsx` (Records + Support Access), `Reports.tsx`.
+  - `PropertyExtras.tsx`: property History (everything, earlier certificate versions kept) and Rent & invoices tabs. `PropertyPlan.tsx`: Property Management Plan (P1-10): check gaps → preview → save version → PDF; saved versions never change.
+  - `docs.tsx`: the LSP paper template (`DocSheet`) used for quotes, invoices, job reports and plans; `QuoteBuilder` (line items), `InvoiceModal`, `JobReportModal`.
   - `shared.tsx`: flow helpers (approveJob, invoices) and shared modals. `tables.tsx`: shared certificate, inspection, job and invoice tables.
 - `src/ui.tsx` also has the detail-page blocks: DetailHead, HSteps (horizontal steps), ActionCard ("Next step"), Stat, PageTabs, Timeline, CommsLog (calls/emails/notes with date and time), UploadModal, PhotoPicker.
 

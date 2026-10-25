@@ -39,7 +39,8 @@ export function propertyHistory(s: S, L: ReturnType<typeof useLookups>, p: Prope
     out.push({ at: i.issued, kind: 'Rent & invoices', text: `Invoice ${i.id} sent to ${i.toKind === 'Client' ? L.client(i.to)?.name : L.landlord(i.to)?.name}: ${money(i.amount)}` });
     if (i.paid >= i.amount) out.push({ at: i.paidAt ?? i.issued, kind: 'Rent & invoices', text: `Invoice ${i.id} paid in full`, tag: { label: 'Paid', tone: 'ok' } });
   });
-  s.activity.filter(a => a.what.includes(p.address) && ['Properties', 'Lettings'].includes(a.area)).forEach(a => out.push({ at: a.at, kind: 'Property', text: a.what, by: a.who }));
+  s.plans.filter(v => v.property === p.id).forEach(v => out.push({ at: v.at, kind: 'Property', text: <><b>Property Management Plan v{v.version}</b> saved · {v.data.ref}</>, by: v.by, tag: { label: 'Saved version', tone: 'brand' } }));
+  s.activity.filter(a => a.what.includes(p.address) && ['Properties', 'Lettings'].includes(a.area) && !a.what.startsWith('Property Management Plan v')).forEach(a => out.push({ at: a.at, kind: 'Property', text: a.what, by: a.who }));
   return out.sort((a, b) => key(b.at) - key(a.at));
 }
 

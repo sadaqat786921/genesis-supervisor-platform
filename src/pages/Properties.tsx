@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Home, Building2, CheckCircle2, ShieldCheck, Wrench, ArrowRight, ClipboardCheck, Users, Wallet, Megaphone, Download, History as HistoryIcon } from 'lucide-react';
+import { Plus, Home, Building2, CheckCircle2, ShieldCheck, Wrench, ArrowRight, ClipboardCheck, Users, Wallet, Megaphone, Download, History as HistoryIcon, FileText } from 'lucide-react';
 import { useStore, useLookups, money, rentStatus, budgetTone } from '../store';
 import { CERT_KINDS, daysFrom, parseDate, type Property } from '../data';
 import { Avatar, Bar, Btn, Card, Chip, Field, KV, Kpi, MiniSearch, Modal, Note, PageTabs, Select, Stat, Tabs, Timeline, Empty } from '../ui';
@@ -7,6 +7,7 @@ import { PageHeader, crumbsFor } from '../Shell';
 import { AddPropertyModal, BookInspectionModal, NewJobModal, adminName, DONE_JOB, jobTone } from './shared';
 import { CertTable, InspTable, JobTable, certTone } from './tables';
 import { JobReportModal } from './docs';
+import { PlanCard, PlanModal } from './PropertyPlan';
 import { PropertyHistory, PropertyMoney, ClientHomeInvoices } from './PropertyExtras';
 
 const occupancy = (s: ReturnType<typeof useStore>, p: Property) => {
@@ -58,7 +59,7 @@ function PropertyList() {
 type PTab = 'overview' | 'tenants' | 'jobs' | 'safety' | 'inspections' | 'budget' | 'money' | 'history';
 function PropertyPage({ id }: { id: string }) {
   const s = useStore(); const L = useLookups(); const p = s.properties.find(x => x.id === id)!;
-  const [tab, setTab] = useState<PTab>('overview'); const [m, setM] = useState<'' | 'job' | 'insp' | 'list' | 'reports'>('');
+  const [tab, setTab] = useState<PTab>('overview'); const [m, setM] = useState<'' | 'job' | 'insp' | 'list' | 'reports' | 'plan'>('');
   const tenants = s.tenants.filter(t => t.property === id && t.status !== 'Moved out');
   const jobs = s.jobs.filter(j => j.property === id); const open = jobs.filter(j => !DONE_JOB.includes(j.status));
   const certs = s.safety.filter(c => c.property === id).sort((a, b) => a.days - b.days);
@@ -72,7 +73,7 @@ function PropertyPage({ id }: { id: string }) {
   const tabs: { id: PTab; label: string; count?: number }[] = [{ id: 'overview', label: 'Overview' }, ...(p.managed ? [{ id: 'tenants' as PTab, label: p.type === 'HMO' ? 'Rooms' : 'Tenants', count: tenants.length }] : []), { id: 'jobs', label: 'Jobs', count: jobs.length }, ...(p.managed ? [{ id: 'safety' as PTab, label: 'Safety checks', count: certs.length }, { id: 'inspections' as PTab, label: 'Inspections', count: insp.length }, { id: 'budget' as PTab, label: 'Repair budget' }] : []), { id: 'money', label: p.managed ? 'Rent & invoices' : 'Invoices' }, { id: 'history', label: 'History' }];
   return <>
     <PageHeader crumbs={crumbsFor('properties', s.go, p.address)} back={() => s.go('properties')} title={p.address}
-      action={<div className="flex"><Btn kind="ghost" icon={<HistoryIcon size={16} />} onClick={() => setTab('history')}>History</Btn><Btn kind="outline" icon={<Wrench size={16} />} onClick={() => setM('job')}>New job</Btn>{p.managed && <Btn kind="outline" icon={<ClipboardCheck size={16} />} onClick={() => setM('insp')}>Book inspection</Btn>}{p.managed && p.status !== 'Let' && <Btn icon={<Megaphone size={16} />} onClick={() => setM('list')}>List to let</Btn>}</div>} />
+      action={<div className="flex"><Btn kind="ghost" icon={<HistoryIcon size={16} />} onClick={() => setTab('history')}>History</Btn>{p.managed && <Btn kind="outline" icon={<FileText size={16} />} onClick={() => setM('plan')}>Property plan</Btn>}<Btn kind="outline" icon={<Wrench size={16} />} onClick={() => setM('job')}>New job</Btn>{p.managed && <Btn kind="outline" icon={<ClipboardCheck size={16} />} onClick={() => setM('insp')}>Book inspection</Btn>}{p.managed && p.status !== 'Let' && <Btn icon={<Megaphone size={16} />} onClick={() => setM('list')}>List to let</Btn>}</div>} />
     <section className="card phero">
       <div className="photo" style={{ backgroundImage: `url(${p.photo})` }} />
       <div className="stack grow" style={{ gap: 12 }}>
@@ -97,6 +98,7 @@ function PropertyPage({ id }: { id: string }) {
         <div className="divlist">{upcoming.slice(0, 2).map(i => <button key={i.id} className="item click" onClick={() => s.go('inspections', i.id)}><span className="datetile t-info"><b>{i.date.split(' ')[0]}</b><span>{i.date.split(' ')[1]?.toUpperCase()}</span></span><div className="stack grow"><b>{i.kind} · {i.time}</b><span className="caption">{i.scope}{i.room ? ' · ' + i.room : ''} · {L.contractor(i.inspector)?.name ?? 'No inspector yet'}</span></div><Chip tone="info">Upcoming</Chip></button>)}
           {last && <button className="item click" onClick={() => s.go('inspections', last.id)}><span className="tile t-ok"><ClipboardCheck size={16} /></span><div className="stack grow"><b>Last: {last.kind}</b><span className="caption">Done {last.doneAt} · {last.summary}</span></div></button>}
           {!upcoming.length && !last && <span className="caption">No inspections yet.</span>}</div></Card>}
+      {p.managed && <PlanCard p={p} />}
       {p.managed && <Card title="Repair budget" sub="This property's own yearly budget." action={<Btn sm kind="ghost" onClick={() => setTab('budget')}>Open</Btn>}><div className="flex between"><span className="metric">{pct}%</span><span className="small">{money(p.used)} of {money(p.budget)} used</span></div><Bar value={pct} tone={budgetTone(pct)} /><span className="caption">{money(p.budget - p.used)} left. Alerts at 70%, 90% and 100%.</span></Card>}
       {!p.managed && <Card title="Client"><KV rows={[['Client', L.client(p.owner)?.name ?? ''], ['Contact', L.client(p.owner)?.contact ?? ''], ['Phone', L.client(p.owner)?.phone ?? ''], ['Invoice terms', L.client(p.owner)?.terms ?? '']]} /><Note>The client looks after tenants and rent. LSP sends contractors, quotes and invoices.</Note></Card>}
     </div>}
@@ -112,6 +114,7 @@ function PropertyPage({ id }: { id: string }) {
       <Card title="Yearly repair budget"><div className="flex between"><span className="metric">{pct}%</span><Chip tone={budgetTone(pct)}>{pct >= 90 ? '90% alert sent' : pct >= 70 ? '70% alert sent' : 'Under 70%'}</Chip></div><Bar value={pct} tone={budgetTone(pct)} /><KV rows={[['Budget', money(p.budget)], ['Used', money(p.used)], ['Left', money(p.budget - p.used)], ['Job limit', L.landlord(p.owner) ? money({ 12: 150, 16: 200, 20: 300 }[L.landlord(p.owner)!.plan]) : '—']]} /></Card>
     </div>}
 
+    {m === 'plan' && <PlanModal p={p} onClose={() => setM('')} />}
     {m === 'reports' && <JobReportModal jobs={[...jobs].sort((a, b) => parseDate(b.reported).getTime() - parseDate(a.reported).getTime())} title={`Job reports · ${p.address}`} onClose={() => setM('')} />}
     {m === 'job' && <NewJobModal property={id} onClose={() => setM('')} onCreated={jid => s.go('jobs', jid)} />}
     {m === 'insp' && <BookInspectionModal property={id} onClose={() => setM('')} onBooked={() => setTab('inspections')} />}
