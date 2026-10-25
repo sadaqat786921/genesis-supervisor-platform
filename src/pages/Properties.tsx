@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Plus, Home, Building2, CheckCircle2, ShieldCheck, Wrench, ArrowRight, ClipboardCheck, Users, Wallet, Megaphone } from 'lucide-react';
+import { Plus, Home, Building2, CheckCircle2, ShieldCheck, Wrench, ArrowRight, ClipboardCheck, Users, Wallet, Megaphone, Download, History as HistoryIcon } from 'lucide-react';
 import { useStore, useLookups, money, rentStatus, budgetTone } from '../store';
 import { CERT_KINDS, daysFrom, parseDate, type Property } from '../data';
 import { Avatar, Bar, Btn, Card, Chip, Field, KV, Kpi, MiniSearch, Modal, Note, PageTabs, Select, Stat, Tabs, Timeline, Empty } from '../ui';
 import { PageHeader, crumbsFor } from '../Shell';
 import { AddPropertyModal, BookInspectionModal, NewJobModal, adminName, DONE_JOB, jobTone } from './shared';
 import { CertTable, InspTable, JobTable, certTone } from './tables';
+import { JobReportModal } from './docs';
+import { PropertyHistory, PropertyMoney, ClientHomeInvoices } from './PropertyExtras';
 
 const occupancy = (s: ReturnType<typeof useStore>, p: Property) => {
   const live = s.tenants.filter(t => t.property === p.id && t.status !== 'Moved out');
@@ -53,10 +55,10 @@ function PropertyList() {
   </>;
 }
 
-type PTab = 'overview' | 'tenants' | 'jobs' | 'safety' | 'inspections' | 'budget';
+type PTab = 'overview' | 'tenants' | 'jobs' | 'safety' | 'inspections' | 'budget' | 'money' | 'history';
 function PropertyPage({ id }: { id: string }) {
   const s = useStore(); const L = useLookups(); const p = s.properties.find(x => x.id === id)!;
-  const [tab, setTab] = useState<PTab>('overview'); const [m, setM] = useState<'' | 'job' | 'insp' | 'list'>('');
+  const [tab, setTab] = useState<PTab>('overview'); const [m, setM] = useState<'' | 'job' | 'insp' | 'list' | 'reports'>('');
   const tenants = s.tenants.filter(t => t.property === id && t.status !== 'Moved out');
   const jobs = s.jobs.filter(j => j.property === id); const open = jobs.filter(j => !DONE_JOB.includes(j.status));
   const certs = s.safety.filter(c => c.property === id).sort((a, b) => a.days - b.days);
@@ -67,10 +69,10 @@ function PropertyPage({ id }: { id: string }) {
   const pct = p.budget ? Math.round(p.used / p.budget * 100) : 0;
   const spent = jobs.filter(j => ['Approved', 'Invoiced', 'Assigned', 'In progress', 'Proof uploaded', 'Ready to assign'].includes(j.status) && j.price);
   const ownerLink = () => p.managed ? s.go('landlords', p.owner) : s.go('clients', p.owner);
-  const tabs: { id: PTab; label: string; count?: number }[] = [{ id: 'overview', label: 'Overview' }, ...(p.managed ? [{ id: 'tenants' as PTab, label: p.type === 'HMO' ? 'Rooms' : 'Tenants', count: tenants.length }] : []), { id: 'jobs', label: 'Jobs', count: jobs.length }, ...(p.managed ? [{ id: 'safety' as PTab, label: 'Safety checks', count: certs.length }, { id: 'inspections' as PTab, label: 'Inspections', count: insp.length }, { id: 'budget' as PTab, label: 'Repair budget' }] : [])];
+  const tabs: { id: PTab; label: string; count?: number }[] = [{ id: 'overview', label: 'Overview' }, ...(p.managed ? [{ id: 'tenants' as PTab, label: p.type === 'HMO' ? 'Rooms' : 'Tenants', count: tenants.length }] : []), { id: 'jobs', label: 'Jobs', count: jobs.length }, ...(p.managed ? [{ id: 'safety' as PTab, label: 'Safety checks', count: certs.length }, { id: 'inspections' as PTab, label: 'Inspections', count: insp.length }, { id: 'budget' as PTab, label: 'Repair budget' }] : []), { id: 'money', label: p.managed ? 'Rent & invoices' : 'Invoices' }, { id: 'history', label: 'History' }];
   return <>
     <PageHeader crumbs={crumbsFor('properties', s.go, p.address)} back={() => s.go('properties')} title={p.address}
-      action={<div className="flex"><Btn kind="outline" icon={<Wrench size={16} />} onClick={() => setM('job')}>New job</Btn>{p.managed && <Btn kind="outline" icon={<ClipboardCheck size={16} />} onClick={() => setM('insp')}>Book inspection</Btn>}{p.managed && p.status !== 'Let' && <Btn icon={<Megaphone size={16} />} onClick={() => setM('list')}>List to let</Btn>}</div>} />
+      action={<div className="flex"><Btn kind="ghost" icon={<HistoryIcon size={16} />} onClick={() => setTab('history')}>History</Btn><Btn kind="outline" icon={<Wrench size={16} />} onClick={() => setM('job')}>New job</Btn>{p.managed && <Btn kind="outline" icon={<ClipboardCheck size={16} />} onClick={() => setM('insp')}>Book inspection</Btn>}{p.managed && p.status !== 'Let' && <Btn icon={<Megaphone size={16} />} onClick={() => setM('list')}>List to let</Btn>}</div>} />
     <section className="card phero">
       <div className="photo" style={{ backgroundImage: `url(${p.photo})` }} />
       <div className="stack grow" style={{ gap: 12 }}>
@@ -100,7 +102,9 @@ function PropertyPage({ id }: { id: string }) {
     </div>}
 
     {tab === 'tenants' && <Card title={p.type === 'HMO' ? 'Rooms' : 'Tenants'}><Occupants p={p} /></Card>}
-    {tab === 'jobs' && <Card title="Jobs at this home" action={<Btn sm icon={<Plus size={14} />} onClick={() => setM('job')}>New job</Btn>}><JobTable list={jobs} hideHome /></Card>}
+    {tab === 'jobs' && <Card title="Jobs at this home" sub={`Download job reports with photo proof to share with ${L.ownerName(p)} when they ask.`} action={<div className="flex"><Btn sm kind="outline" icon={<Download size={14} />} disabled={!jobs.length} onClick={() => setM('reports')}>Download job reports</Btn><Btn sm icon={<Plus size={14} />} onClick={() => setM('job')}>New job</Btn></div>}><JobTable list={jobs} hideHome /></Card>}
+    {tab === 'money' && (p.managed ? <PropertyMoney p={p} /> : <ClientHomeInvoices p={p} />)}
+    {tab === 'history' && <PropertyHistory p={p} />}
     {tab === 'safety' && <Card title="Safety checks" sub="Every certificate this home needs, with when it was done and when it ends."><CertTable list={certs} hideHome /></Card>}
     {tab === 'inspections' && <Card title="Inspections" action={<Btn sm icon={<Plus size={14} />} onClick={() => setM('insp')}>Book inspection</Btn>}><InspTable list={insp} hideHome /></Card>}
     {tab === 'budget' && <div className="dgrid">
@@ -108,6 +112,7 @@ function PropertyPage({ id }: { id: string }) {
       <Card title="Yearly repair budget"><div className="flex between"><span className="metric">{pct}%</span><Chip tone={budgetTone(pct)}>{pct >= 90 ? '90% alert sent' : pct >= 70 ? '70% alert sent' : 'Under 70%'}</Chip></div><Bar value={pct} tone={budgetTone(pct)} /><KV rows={[['Budget', money(p.budget)], ['Used', money(p.used)], ['Left', money(p.budget - p.used)], ['Job limit', L.landlord(p.owner) ? money({ 12: 150, 16: 200, 20: 300 }[L.landlord(p.owner)!.plan]) : '—']]} /></Card>
     </div>}
 
+    {m === 'reports' && <JobReportModal jobs={[...jobs].sort((a, b) => parseDate(b.reported).getTime() - parseDate(a.reported).getTime())} title={`Job reports · ${p.address}`} onClose={() => setM('')} />}
     {m === 'job' && <NewJobModal property={id} onClose={() => setM('')} onCreated={jid => s.go('jobs', jid)} />}
     {m === 'insp' && <BookInspectionModal property={id} onClose={() => setM('')} onBooked={() => setTab('inspections')} />}
     {m === 'list' && <Modal title="List this home to let" sub="It shows on Rightmove and Zoopla. New applicants land in Lettings." onClose={() => setM('')} footer={<><Btn kind="outline" onClick={() => setM('')}>Cancel</Btn><Btn icon={<Megaphone size={16} />} onClick={() => { s.setProperties(ps => ps.map(x => x.id === id ? { ...x, status: x.type === 'HMO' ? 'Partly let' : 'Ready to let' } : x)); s.log(`Listed ${p.address} on Rightmove and Zoopla`, 'Properties'); s.toast('Listed on Rightmove and Zoopla'); setM(''); }}>List now</Btn></>}><KV rows={[['Rent', money(p.rent) + ' pcm'], ['Photos', '12 ready'], ['EPC', certs.find(c => c.kind === 'Energy (EPC)')?.status ?? '—']]} /></Modal>}

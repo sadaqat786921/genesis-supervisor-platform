@@ -1,11 +1,12 @@
 import { useRef, useState } from 'react';
-import { Plus, Wrench, AlertTriangle, Image as ImageIcon, ClipboardCheck, CheckCircle2, UserPlus, Play, Upload, Undo2, Receipt, Send, XCircle, ArrowRight, PoundSterling, Lock, Phone, Star } from 'lucide-react';
+import { Plus, Wrench, AlertTriangle, Image as ImageIcon, ClipboardCheck, CheckCircle2, UserPlus, Play, Upload, Undo2, Receipt, Send, XCircle, ArrowRight, PoundSterling, Lock, Phone, Star, FileText } from 'lucide-react';
 import { useStore, useLookups, money } from '../store';
 import { PLAN, nowStamp, type Comm, type Job } from '../data';
 import { ActionCard, Avatar, Btn, Card, Chip, CommsLog, DetailHead, Field, HSteps, KV, Kpi, MiniSearch, Modal, Note, Reason, Select, Tabs, Text, Timeline, Empty } from '../ui';
 import { PageHeader, crumbsFor } from '../Shell';
-import { AssignContractorModal, HomeCard, NewJobModal, adminName, approveJob, jobEvent, jobTone, jobStepAt, lockJob, sendJobInvoice, MANAGED_STEPS, CLIENT_STEPS, DONE_JOB } from './shared';
+import { AssignContractorModal, HomeCard, NewJobModal, adminName, approveJob, jobEvent, jobTone, jobStepAt, lockJob, jobLines, lineSum, MANAGED_STEPS, CLIENT_STEPS, DONE_JOB } from './shared';
 import { JobTable, invoiceState } from './tables';
+import { QuoteBuilder, InvoiceModal, JobReportModal } from './docs';
 
 export function Jobs() {
   const s = useStore();
@@ -41,7 +42,7 @@ export function JobPage({ id, ctx }: { id: string; ctx: 'jobs' | 'clients' }) {
   const s = useStore(); const L = useLookups(); const j = s.jobs.find(x => x.id === id)!;
   const p = L.prop(j.property); const ll = p?.managed ? L.landlord(p.owner) : undefined; const cl = !p?.managed ? L.client(p?.owner) : undefined;
   const limit = ll ? PLAN[ll.plan].limit : 0; const c = L.contractor(j.contractor);
-  const [m, setM] = useState<'' | 'assign' | 'back' | 'decline' | 'quote' | 'pay'>('');
+  const [m, setM] = useState<'' | 'assign' | 'back' | 'decline' | 'quote' | 'pay' | 'inv' | 'report'>('');
   const [price, setPrice] = useState(j.price ? String(j.price) : ''); const [pc, setPc] = useState(j.contractor ?? '');
   const fileRef = useRef<HTMLInputElement>(null);
   const steps = j.managed ? MANAGED_STEPS : CLIENT_STEPS; const at = jobStepAt(j);
@@ -61,23 +62,23 @@ export function JobPage({ id, ctx }: { id: string; ctx: 'jobs' | 'clients' }) {
     switch (j.status) {
       case 'New': return j.managed
         ? <ActionCard text={`Get a price from a contractor. Under ${money(limit)} it goes ahead. Over it, it comes to you for approval.`}><Btn block kind="outline" icon={<XCircle size={16} />} onClick={() => setM('decline')}>Decline job</Btn></ActionCard>
-        : <ActionCard text={`${cl?.name} asked for this job. Send them a quote first.`}><Btn block icon={<Send size={16} />} onClick={() => setM('quote')}>Send quote</Btn><Btn block kind="outline" icon={<XCircle size={16} />} onClick={() => setM('decline')}>Decline request</Btn></ActionCard>;
-      case 'Quote sent': return <ActionCard text={`Quote of ${money(j.price)} sent to ${cl?.name}. Waiting for them to accept.`}><Btn block icon={<CheckCircle2 size={16} />} onClick={() => ev(`${cl?.name} accepted the quote`, { status: 'Quote accepted' }, 'Clients')}>Client accepted</Btn><Btn block kind="outline" onClick={() => ev(`${cl?.name} declined the quote`, { status: 'Declined', declined: 'Client declined the quote' }, 'Clients')}>Client declined</Btn></ActionCard>;
+        : <ActionCard text={`${cl?.name} asked for this job. Send them a quote first.`}><Btn block icon={<Plus size={16} />} onClick={() => setM('quote')}>Create quote</Btn><Btn block kind="outline" icon={<XCircle size={16} />} onClick={() => setM('decline')}>Decline request</Btn></ActionCard>;
+      case 'Quote sent': return <ActionCard text={`Quote ${j.quoteNo ?? ''} of ${money(j.price)} sent to ${cl?.name}${j.validUntil ? `. Valid until ${j.validUntil}` : ''}. Waiting for them to accept.`}><Btn block icon={<CheckCircle2 size={16} />} onClick={() => ev(`${cl?.name} accepted the quote`, { status: 'Quote accepted' }, 'Clients')}>Client accepted</Btn><Btn block kind="outline" onClick={() => ev(`${cl?.name} declined the quote`, { status: 'Declined', declined: 'Client declined the quote' }, 'Clients')}>Client declined</Btn><Btn block kind="ghost" icon={<Send size={16} />} onClick={() => setM('quote')}>Edit and resend quote</Btn></ActionCard>;
       case 'Quote accepted': return <ActionCard tone="ok" text={c ? `Quote accepted. Send the job to ${c.name}.` : 'Quote accepted. Assign a contractor.'}>{c ? <Btn block icon={<UserPlus size={16} />} onClick={() => ev(`${c.name} assigned`, { status: 'Assigned' })}>Assign {c.name}</Btn> : null}<Btn block kind={c ? 'outline' : 'primary'} icon={<UserPlus size={16} />} onClick={() => setM('assign')}>{c ? 'Choose someone else' : 'Assign contractor'}</Btn></ActionCard>;
       case 'Waiting approval': return <ActionCard tone="warn" title="Needs your approval" text={`${money(j.price)} is over ${ll?.name}'s ${money(limit)} job limit.`}><Btn block icon={<CheckCircle2 size={16} />} onClick={() => approveJob(s, j, L)}>Approve {money(j.price)}</Btn><Btn block kind="outline" icon={<ArrowRight size={16} />} onClick={() => s.go('approvals', id)}>Open approval and budget</Btn></ActionCard>;
       case 'Ready to assign': return <ActionCard text="The price is agreed. Assign a contractor with documents in date."><Btn block icon={<UserPlus size={16} />} onClick={() => setM('assign')}>Assign contractor</Btn></ActionCard>;
       case 'Assigned': return <ActionCard text={`${c?.name} has the job. Mark it started when they begin.`}><Btn block icon={<Play size={16} />} onClick={() => ev(`${c?.name} started the work`, { status: 'In progress' })}>Mark work started</Btn></ActionCard>;
       case 'In progress': case 'Sent back': return <ActionCard text={j.status === 'Sent back' ? `Sent back: ${j.sentBack}. Waiting for new photos.` : `${c?.name} is doing the work. They upload before and after photos when it is finished.`}><Btn block icon={<Upload size={16} />} onClick={() => fileRef.current?.click()}>Upload photo proof</Btn><Btn block kind="outline" onClick={() => proof(['Before', 'After', 'Receipt'])}>Contractor uploaded photos</Btn></ActionCard>;
       case 'Proof uploaded': return <ActionCard tone="ok" text="Check the photos. If the work is done properly, approve it. The record locks."><Btn block icon={<CheckCircle2 size={16} />} onClick={() => lockJob(s, j, L)}>Approve work</Btn><Btn block kind="outline" icon={<Undo2 size={16} />} onClick={() => setM('back')}>Send back to contractor</Btn></ActionCard>;
-      case 'Approved': return <ActionCard text={`Work approved. Send the ${money(j.price)} invoice to ${L.ownerName(p)}.`}><Btn block icon={<Receipt size={16} />} onClick={() => sendJobInvoice(s, j, L)}>Send invoice</Btn></ActionCard>;
-      case 'Invoiced': return <ActionCard tone="ok" title="Done" text={inv ? `Invoice ${inv.id} · ${invoiceState(inv).label}.` : 'Invoice sent.'}>{inv && inv.paid < inv.amount && <Btn block icon={<PoundSterling size={16} />} onClick={() => { s.setInvoices(is => is.map(x => x.id === inv.id ? { ...x, paid: x.amount, overdue: false } : x)); ev(`Invoice ${inv.id} paid`, {}, 'Rent & Invoices'); }}>Mark invoice paid</Btn>}<Btn block kind="outline" icon={<Lock size={16} />} onClick={() => s.go('records')}>See locked record</Btn></ActionCard>;
+      case 'Approved': return <ActionCard text={`Work approved. Send the ${money(j.price)} invoice to ${L.ownerName(p)}.`}><Btn block icon={<Receipt size={16} />} onClick={() => setM('inv')}>Create and send invoice</Btn></ActionCard>;
+      case 'Invoiced': return <ActionCard tone="ok" title="Done" text={inv ? `Invoice ${inv.id} · ${invoiceState(inv).label}.` : 'Invoice sent.'}>{inv && inv.paid < inv.amount && <Btn block icon={<PoundSterling size={16} />} onClick={() => { s.setInvoices(is => is.map(x => x.id === inv.id ? { ...x, paid: x.amount, overdue: false } : x)); ev(`Invoice ${inv.id} paid`, {}, 'Rent & Invoices'); }}>Mark invoice paid</Btn>}<Btn block kind="outline" icon={<Receipt size={16} />} onClick={() => setM('inv')}>View invoice</Btn><Btn block kind="outline" icon={<Lock size={16} />} onClick={() => s.go('records')}>See locked record</Btn></ActionCard>;
       default: return <ActionCard tone="neutral" title="Not going ahead" text={j.declined} />;
     }
   })();
 
   return <>
     <PageHeader crumbs={ctx === 'jobs' ? crumbsFor('jobs', s.go, j.title) : crumbsFor('clients', s.go, j.title)} back={back} title={j.title}
-      action={<div className="flex">{c && !done && <Btn kind="outline" icon={<UserPlus size={16} />} onClick={() => setM('assign')}>Change contractor</Btn>}{j.status === 'Proof uploaded' && <Btn icon={<CheckCircle2 size={16} />} onClick={() => lockJob(s, j, L)}>Approve work</Btn>}</div>} />
+      action={<div className="flex"><Btn kind="ghost" icon={<FileText size={16} />} onClick={() => setM('report')}>Job report</Btn>{c && !done && <Btn kind="outline" icon={<UserPlus size={16} />} onClick={() => setM('assign')}>Change contractor</Btn>}{j.status === 'Proof uploaded' && <Btn icon={<CheckCircle2 size={16} />} onClick={() => lockJob(s, j, L)}>Approve work</Btn>}</div>} />
     <DetailHead media={<span className={`tile ${j.urgent && !done ? 't-err' : 't-info'}`} style={{ width: 64, height: 64, borderRadius: 18 }}><Wrench size={28} /></span>} title={j.title}
       chips={<><Chip tone={jobTone(j.status)}>{j.status}</Chip>{j.urgent && <Chip tone="err">Emergency</Chip>}<Chip tone="neutral" dot={false}>{j.managed ? 'Managed home' : 'Client home'}</Chip><Chip tone="neutral" dot={false}>{j.category}</Chip></>}
       meta={[['Home', p?.address ?? ''], ['Reported', j.reported], ['By', j.by], ['Office Admin', adminName(j.admin)]]} />
@@ -95,6 +96,9 @@ export function JobPage({ id, ctx }: { id: string; ctx: 'jobs' | 'clients' }) {
           <div className="photos">{(j.proof ?? []).map((x, i) => <div key={x + i} className="ph" style={{ backgroundImage: `url(images/home${(i % 3) + 1}.jpg)` }}><span>{x}</span></div>)}</div></Card>}
         {(j.status === 'Approved' || j.status === 'Invoiced') && <Card title="Invoice" sub={j.managed ? 'Landlord invoices are due straight away.' : `Client invoices are due in ${cl?.terms ?? '30 days'}.`}>
           <div className="lrow"><Receipt size={18} color="var(--text-brand)" /><div className="stack grow"><b>{inv ? inv.id : 'Not sent yet'}</b><span className="caption">To {L.ownerName(p)} · {money(j.price)}</span></div>{inv && <Chip tone={invoiceState(inv).tone}>{invoiceState(inv).label}</Chip>}</div></Card>}
+        {!j.managed && j.quoteNo && <Card title={`Quote ${j.quoteNo}`} sub={`Sent ${j.quoted}${j.validUntil ? ' · valid until ' + j.validUntil : ''}`} action={!done && <Btn sm kind="ghost" icon={<Send size={14} />} onClick={() => setM('quote')}>Edit</Btn>}>
+          <div className="tablewrap"><table className="t"><thead><tr><th>Activity</th><th>Description</th><th>Qty</th><th>Rate</th><th style={{ textAlign: 'right' }}>Amount</th></tr></thead><tbody>{jobLines(j).map((l, i) => <tr key={i} className="static"><td><b className="strong">{l.activity}</b></td><td>{l.desc}</td><td>{l.qty}</td><td>{money(l.rate)}</td><td style={{ textAlign: 'right' }}><b>{money(Math.round(l.qty * l.rate * 100) / 100)}</b></td></tr>)}</tbody></table></div>
+          <div className="flex between"><span className="label">Quote total</span><b style={{ fontSize: 18 }}>{money(lineSum(jobLines(j)))}</b></div></Card>}
         <Card title="What's wrong"><p style={{ margin: 0, lineHeight: 1.6 }}>{j.note ?? 'No details given.'}</p>
           <KV rows={[['Reported by', j.by], ['Reported on', j.reported], ['Type of work', j.category], ...(j.tenant ? [['Tenant', <button className="link" onClick={() => s.go('tenants', j.tenant)}>{L.tenant(j.tenant)?.name}</button>] as [string, React.ReactNode]] : [])]} /></Card>
         <Card title="Communication" sub="Calls and emails with the tenant, landlord, client or contractor."><CommsLog items={j.comms} to={ll?.email ?? cl?.email} onAdd={addComm} /></Card>
@@ -111,20 +115,9 @@ export function JobPage({ id, ctx }: { id: string; ctx: 'jobs' | 'clients' }) {
     {m === 'assign' && <AssignContractorModal title={c ? 'Change contractor' : 'Assign a contractor'} onClose={() => setM('')} onPick={x => { ev(`${L.contractor(x)?.name} ${c ? 'now has the job (was ' + c.name + ')' : 'assigned'}`, { contractor: x, status: ['Ready to assign', 'Quote accepted', 'New'].includes(j.status) && j.status !== 'New' ? 'Assigned' : j.status }); setM(''); }} />}
     {m === 'back' && <Reason title="Send back to the contractor" sub="They see your note and must fix it and upload new photos." cta="Send back" placeholder="e.g. After photo doesn't show the finished wall" onClose={() => setM('')} onDone={r => { ev(`Sent back: ${r}`, { status: 'Sent back', sentBack: r }); setM(''); }} />}
     {m === 'decline' && <Reason danger title="Decline this job" sub="The person who reported it is told. Nothing is charged." cta="Decline" options={['Not LSP’s responsibility', 'Tenant damage, tenant to pay', 'Duplicate of another job', 'Landlord will fix it themselves']} onClose={() => setM('')} onDone={r => { ev(`Declined: ${r}`, { status: 'Declined', declined: r }); setM(''); }} />}
-    {m === 'quote' && <QuoteModal j={j} onClose={() => setM('')} />}
+    {m === 'quote' && <QuoteBuilder job={j} onClose={() => setM('')} />}
+    {m === 'inv' && <InvoiceModal job={s.jobs.find(x => x.id === id)} onClose={() => setM('')} />}
+    {m === 'report' && <JobReportModal jobs={[j]} title={`Job report · ${j.title}`} onClose={() => setM('')} />}
   </>;
 }
 
-export function QuoteModal({ j, onClose }: { j: Job; onClose: () => void }) {
-  const s = useStore(); const L = useLookups(); const p = L.prop(j.property);
-  const [c, setC] = useState(j.contractor ?? 'C4'); const [cost, setCost] = useState(j.cost ? String(j.cost) : '120'); const [price, setPrice] = useState(j.price ? String(j.price) : '180');
-  const m = (+price || 0) - (+cost || 0);
-  return <Modal title="Send quote to client" sub={`${j.title} · ${p?.address}`} onClose={onClose} footer={<><Btn kind="outline" onClick={onClose}>Cancel</Btn><Btn icon={<Send size={16} />} disabled={m < 0 || !+price} onClick={() => {
-    jobEvent(s, j.id, `Quote sent: ${money(+price)}`, { contractor: c, cost: +cost, price: +price, status: 'Quote sent', comms: [...j.comms, { id: 'cm' + Date.now(), at: nowStamp(), by: 'Sarah Khan', channel: 'Email', dir: 'out', subject: `Quote · ${p?.address}`, text: `Quote for ${j.title.toLowerCase()}: ${money(+price)} including parts and labour.` }] });
-    s.log(`Sent quote ${money(+price)} to ${L.ownerName(p)} for ${j.title}`, 'Clients'); s.toast('Quote sent to the client'); onClose();
-  }}>Send quote</Btn></>}>
-    <Field label="Contractor"><Select value={c} onChange={setC} options={s.contractors.filter(x => x.type === 'Trade').map(x => ({ value: x.id, label: `${x.name} · ${x.trade}${x.status !== 'Active' ? ' (paused)' : ''}`, disabled: x.status !== 'Active' }))} /></Field>
-    <div className="grid g2"><Field label="Contractor's cost (£) · only staff see this"><Text value={cost} onChange={setCost} /></Field><Field label="Price to client (£)"><Text value={price} onChange={setPrice} /></Field></div>
-    {m >= 0 ? <Note tone="ok">LSP margin {money(m)}. The client only sees the price.</Note> : <Note tone="err">The price is lower than the cost.</Note>}
-  </Modal>;
-}

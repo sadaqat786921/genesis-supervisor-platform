@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Search, Check, Mail, Home, ArrowRight, Phone } from 'lucide-react';
 import { useStore, useLookups, money, staff, type Lookups, type Route } from '../store';
-import { INSP_KINDS, PLAN, nowStamp, type InspKind, type InspScope, type Job, type JobEvent, type Plan, type Property } from '../data';
+import { INSP_KINDS, PLAN, nowStamp, type InspKind, type InspScope, type Job, type JobEvent, type Line, type Plan, type Property } from '../data';
 import { Btn, Chip, Field, Modal, Note, Select, Text, Area, Avatar, PhotoPicker, dateLabel } from '../ui';
 
 type S = ReturnType<typeof useStore>;
@@ -46,15 +46,21 @@ export function approveJob(s: S, j: Job, L: Lookups) {
   s.toast(`${j.title} approved. ${money(j.price)} taken from the budget once.${alert}`);
 }
 
+/** Rows on a quote or invoice. A job without its own rows gets one labour row for its price. */
+export const jobLines = (j: Job): Line[] => j.lines?.length ? j.lines : [{ activity: 'Labour', desc: j.title, qty: 1, rate: j.price }];
+export const lineSum = (ls: Line[]) => Math.round(ls.reduce((a, l) => a + (l.qty || 0) * (l.rate || 0), 0) * 100) / 100;
+export const nextInvoiceNo = (s: S) => 'INV-' + (1045 + s.invoices.length);
+
 /** Work approved → send invoice to the landlord or client. */
 export function sendJobInvoice(s: S, j: Job, L: Lookups) {
   const p = L.prop(j.property);
-  const id = 'INV-' + (1045 + s.invoices.length);
-  const toName = L.ownerName(p);
-  s.setInvoices(is => [{ id, to: p?.owner ?? '', toKind: p?.managed ? 'Landlord' : 'Client', job: j.id, amount: j.price, paid: 0, terms: p?.managed ? 'Straight away' : (L.client(p?.owner)?.terms ?? '30 days'), issued: '15 Oct 2026', due: p?.managed ? '15 Oct 2026' : '14 Nov 2026', overdue: false, items: [{ desc: `${j.title}, ${p?.address}`, amount: j.price }] }, ...is]);
+  const id = nextInvoiceNo(s);
+  const toName = L.ownerName(p); const lines = jobLines(j); const total = lineSum(lines);
+  s.setInvoices(is => [{ id, to: p?.owner ?? '', toKind: p?.managed ? 'Landlord' : 'Client', job: j.id, amount: total, paid: 0, terms: p?.managed ? 'Straight away' : (L.client(p?.owner)?.terms ?? '30 days'), issued: '15 Oct 2026', due: p?.managed ? '15 Oct 2026' : '14 Nov 2026', overdue: false, site: p?.address, items: lines.map(l => ({ activity: l.activity, desc: l.desc, qty: l.qty, rate: l.rate, amount: Math.round(l.qty * l.rate * 100) / 100 })) }, ...is]);
   jobEvent(s, j.id, `Invoice ${id} sent to ${toName}`, { status: 'Invoiced', invoice: id });
-  s.log(`Sent invoice ${id} (${money(j.price)}) to ${toName} for ${j.title}`, 'Rent & Invoices');
+  s.log(`Sent invoice ${id} (${money(total)}) to ${toName} for ${j.title}`, 'Rent & Invoices');
   s.toast(`Invoice ${id} sent to ${toName}`);
+  return id;
 }
 
 export function lockJob(s: S, j: Job, L: Lookups) {

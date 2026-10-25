@@ -3,6 +3,7 @@ import { Upload, Bell, Wrench, ClipboardCheck, ShieldCheck, Receipt, ArrowRight,
 import { useStore, useLookups, money, type Lookups, type Route } from '../store';
 import { daysFrom, nowStamp, type CertStatus, type Inspection, type Invoice, type Job, type SafetyCert } from '../data';
 import { Avatar, Btn, Chip, Drawer, Card, KV, Note, UploadModal, When, Empty } from '../ui';
+import { InvoiceModal } from './docs';
 import { adminName, jobTone, nextJobAction } from './shared';
 
 type S = ReturnType<typeof useStore>;
@@ -89,11 +90,6 @@ export function InvoiceTable({ list }: { list: Invoice[] }) {
       <td><Chip tone={st.tone}>{st.label}</Chip></td>
       <td style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>{left > 0 && <div className="flex" style={{ justifyContent: 'flex-end' }}><Btn sm kind="ghost" icon={<Bell size={14} />} onClick={() => remind(i)}>Remind</Btn><Btn sm kind="outline" onClick={() => paid(i)}>Mark paid</Btn></div>}</td></tr>; })}
   </tbody></table>{!list.length && <Empty icon={<Receipt size={22} />}>No invoices.</Empty>}
-    {inv && <Drawer title={inv.id} sub={`${name(inv)} · issued ${inv.issued}`} onClose={() => setOpen(null)} footer={<>{inv.amount > inv.paid && <><Btn kind="outline" icon={<Bell size={16} />} onClick={() => remind(inv)}>Send reminder</Btn><Btn onClick={() => paid(inv)}>Mark paid</Btn></>}<Btn kind="outline" icon={<Download size={16} />} onClick={() => s.toast(`${inv.id} downloaded as PDF`)}>PDF</Btn></>}>
-      <Card className="flat"><KV rows={[['To', `${name(inv)} (${inv.toKind})`], ['Terms', inv.terms], ['Issued', inv.issued], ['Due', inv.due], ['Status', <Chip tone={invoiceState(inv).tone}>{invoiceState(inv).label}</Chip>]]} /></Card>
-      <Card className="flat" title="What it's for"><div className="divlist">{inv.items.map((x, k) => <div key={k} className="item"><b className="grow">{x.desc}</b><b>{money(x.amount)}</b></div>)}<div className="item"><span className="grow label">Total</span><b style={{ fontSize: 16 }}>{money(inv.amount)}</b></div><div className="item"><span className="grow label">Paid</span><b>{money(inv.paid)}</b></div></div></Card>
-      {inv.job && <Btn kind="ghost" icon={<ArrowRight size={16} />} onClick={() => s.go('jobs', inv.job)}>Open the job</Btn>}
-      {inv.overdue && <Note tone="err">Overdue. Send a reminder or call them.</Note>}
-    </Drawer>}
+    {inv && <InvoiceModal invoice={inv.id} onClose={() => setOpen(null)} />}
   </div>;
 }
