@@ -30,7 +30,7 @@ export function DocSheet({ kind, to, meta, site, lines, foot, stamp, children }:
   kind: string; to: { label: string; rows: string[] }; meta: [string, string][]; site?: string; lines?: Line[];
   foot?: [string, string][]; stamp?: { text: string; tone: 'ok' | 'info' | 'warn' }; children?: ReactNode;
 }) {
-  return <div className="docwrap"><div className="doc">
+  return <div className="docwrap"><div className="paper">
     <div className="doc-h">
       <div className="stack" style={{ gap: 2 }}><b className="doc-co">{COMPANY.name}</b>{COMPANY.address.map(a => <span key={a}>{a}</span>)}<span>{COMPANY.email}</span><span className="doc-reg">{COMPANY.reg}</span></div>
       <img src="images/logo.svg" alt="Landlord Service Plans" className="doc-logo" />

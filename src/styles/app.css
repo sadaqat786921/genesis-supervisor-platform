@@ -704,9 +704,9 @@ button.sb-st:hover { filter: brightness(.97); }
 /* ---------- documents: quote, invoice, job report (LSP paper template) ---------- */
 .modal.wide:has(.docwrap) { width: min(820px, 100%); }
 .docwrap { background: var(--bg-page); border-radius: var(--r-lg); padding: 16px; }
-.doc { background: #fff; border: 1px solid var(--border-default); border-radius: 6px; box-shadow: 0 6px 18px rgba(15,24,40,.06); padding: 40px 44px 28px; display: flex; flex-direction: column; gap: 22px; font-size: 12.5px; color: var(--text-primary); min-height: 640px; position: relative; align-items: stretch; text-align: left; }
-.doc + .doc { margin-top: 16px; }
-.docwrap .doc ~ .doc, .docwrap + .docwrap { margin-top: 16px; }
+.paper { background: #fff; border: 1px solid var(--border-default); border-radius: 6px; box-shadow: 0 6px 18px rgba(15,24,40,.06); padding: 40px 44px 28px; display: flex; flex-direction: column; gap: 22px; font-size: 12.5px; color: var(--text-primary); min-height: 640px; position: relative; align-items: stretch; text-align: left; }
+.paper + .paper { margin-top: 16px; }
+.docwrap .paper ~ .paper, .docwrap + .docwrap { margin-top: 16px; }
 .doc-h { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
 .doc-h span { color: var(--text-secondary); font-size: 11.5px; }
 .doc-co { font-size: 14px; font-weight: 800; margin-bottom: 4px; white-space: nowrap; }
@@ -758,13 +758,13 @@ button.sb-st:hover { filter: brightness(.97); }
 .hrow.click { cursor: pointer; border-radius: 10px; } .hrow.click:hover { background: var(--bg-subtle); }
 .htext { font-size: 13px; line-height: 1.45; } .htext b { font-weight: 700; }
 tr.static { cursor: default; } tr.static:hover td { background: none; }
-@media (max-width: 760px) { .qhead { display: none; } .qrow { grid-template-columns: 1fr 1fr; } .qrow input:nth-child(2) { grid-column: span 2; order: -1; } .doc { padding: 24px 20px; } .doc-top { grid-template-columns: 1fr; } .doc-kv { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 760px) { .qhead { display: none; } .qrow { grid-template-columns: 1fr 1fr; } .qrow input:nth-child(2) { grid-column: span 2; order: -1; } .paper { padding: 24px 20px; } .doc-top { grid-template-columns: 1fr; } .doc-kv { grid-template-columns: 1fr 1fr; } }
 @media print {
   body.printdoc * { visibility: hidden !important; }
   body.printdoc .docwrap, body.printdoc .docwrap * { visibility: visible !important; }
   body.printdoc .docwrap { position: absolute; left: 0; top: 0; width: 100%; padding: 0; background: #fff; }
   body.printdoc .modal { max-height: none; overflow: visible; box-shadow: none; }
-  body.printdoc .doc { border: 0; box-shadow: none; page-break-after: always; }
+  body.printdoc .paper { border: 0; box-shadow: none; page-break-after: always; }
 }
 /* property management plan */
 .plan-src { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
