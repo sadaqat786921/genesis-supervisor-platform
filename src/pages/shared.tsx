@@ -72,12 +72,12 @@ export function lockJob(s: S, j: Job, L: Lookups) {
 }
 
 /* ---------- modals ---------- */
-export function NewLandlordModal({ onClose, prefill, onCreated }: { onClose: () => void; prefill?: { name: string; email: string; phone: string }; onCreated?: (id: string) => void }) {
+export function NewLandlordModal({ onClose, prefill, onCreated, from }: { onClose: () => void; prefill?: { name: string; email: string; phone: string; billing?: string; plan?: Plan; admin?: string }; onCreated?: (id: string) => void; from?: string }) {
   const s = useStore(); const L = useLookups();
-  const [step, setStep] = useState(prefill ? 1 : 0);
+  const [step, setStep] = useState(prefill && !from ? 1 : 0);
   const [q, setQ] = useState(prefill?.name ?? '');
-  const [f, setF] = useState({ name: prefill?.name ?? '', email: prefill?.email ?? '', phone: prefill?.phone ?? '', billing: '', admin: 'et' });
-  const [plan, setPlan] = useState<Plan>(16);
+  const [f, setF] = useState({ name: prefill?.name ?? '', email: prefill?.email ?? '', phone: prefill?.phone ?? '', billing: prefill?.billing ?? '', admin: prefill?.admin ?? 'et' });
+  const [plan, setPlan] = useState<Plan>(prefill?.plan ?? 16);
   const [start, setStart] = useState('2026-11-01');
   const [prop, setProp] = useState({ address: '', area: '', type: 'House' as Property['type'], beds: '3', rooms: '5', rent: '', budget: '1200', photo: '' });
   const matches = q.trim().length > 1 ? s.landlords.filter(l => (l.name + l.email).toLowerCase().includes(q.toLowerCase())) : [];
@@ -93,7 +93,7 @@ export function NewLandlordModal({ onClose, prefill, onCreated }: { onClose: () 
   };
   const ok1 = f.name && /@/.test(f.email) && f.phone && f.billing;
   const ok3 = !prop.address || (prop.area && prop.rent);
-  return <Modal wide title="New landlord" sub="Only the Supervisor creates landlord accounts. Landlords do not need ID checks." onClose={onClose}
+  return <Modal wide title="New landlord" sub={from ? `${from} sent these details. Check for duplicates, confirm the plan and the Office Admin, then send the login email.` : 'Only the Supervisor creates landlord accounts. Landlords do not need ID checks.'} onClose={onClose}
     footer={<>{step > 0 && <Btn kind="outline" onClick={() => setStep(step - 1)}>Back</Btn>}
       {step === 3 && !prop.address && <Btn kind="ghost" onClick={() => setStep(4)}>Skip for now</Btn>}
       {step < 4 && <Btn disabled={(step === 1 && !ok1) || (step === 3 && (!prop.address || !ok3))} onClick={() => setStep(step + 1)}>{step === 0 ? 'They are new, continue' : 'Continue'}</Btn>}

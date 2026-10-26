@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, Mail, User, KeyRound, UserCheck, Home, UserPlus, Briefcase, Wrench, ClipboardCheck, HardHat, ArrowLeft,
   CircleCheck, ShieldCheck, PoundSterling, History, Lock, FileBarChart, PanelLeft, LogOut, Search, Bell, CalendarDays, ChevronRight, ArrowRight, Eye, EyeOff, ShieldAlert,
 } from 'lucide-react';
-import { useStore, useLookups, type Route } from './store';
+import { useStore, useLookups, staff, type Route } from './store';
 import { LET_STAGES, daysFrom } from './data';
 import { Btn, IBtn, Note } from './ui';
 
@@ -11,7 +11,7 @@ export const NAV: { group: string; items: { id: Route; label: string; icon: type
   { group: 'Overview', items: [{ id: 'today', label: 'Today', icon: LayoutDashboard }, { id: 'team', label: 'Team Work', icon: Users }, { id: 'enquiries', label: 'Enquiries', icon: Mail }] },
   { group: 'Homes & People', items: [{ id: 'landlords', label: 'Landlords', icon: User }, { id: 'lettings', label: 'Lettings', icon: KeyRound }, { id: 'tenants', label: 'Tenants', icon: UserCheck }, { id: 'properties', label: 'Properties', icon: Home }] },
   { group: 'Partners & Work', items: [{ id: 'signups', label: 'Sign-Ups', icon: UserPlus }, { id: 'clients', label: 'Clients', icon: Briefcase }, { id: 'contractors', label: 'Contractors', icon: HardHat }, { id: 'jobs', label: 'Jobs', icon: Wrench }, { id: 'inspections', label: 'Inspections', icon: ClipboardCheck }] },
-  { group: 'Checks & Money', items: [{ id: 'approvals', label: 'Approvals & Budgets', icon: CircleCheck }, { id: 'safety', label: 'Safety & Compliance', icon: ShieldCheck }, { id: 'rent', label: 'Rent & Invoices', icon: PoundSterling }] },
+  { group: 'Checks & Money', items: [{ id: 'approvals', label: 'Approvals & Requests', icon: CircleCheck }, { id: 'safety', label: 'Safety & Compliance', icon: ShieldCheck }, { id: 'rent', label: 'Rent & Invoices', icon: PoundSterling }] },
   { group: 'Records', items: [{ id: 'records', label: 'Records & History', icon: History }, { id: 'support', label: 'Support Access', icon: Lock }, { id: 'reports', label: 'Reports', icon: FileBarChart }] },
 ];
 export const LABEL: Record<Route, string> = Object.fromEntries(NAV.flatMap(g => g.items.map(i => [i.id, i.label]))) as Record<Route, string>;
@@ -25,7 +25,7 @@ export function useCounts() {
     tenants: s.tenants.filter(t => t.status === 'Moving out').length,
     signups: s.signups.filter(x => x.status === 'Waiting').length,
     jobs: s.jobs.filter(j => j.urgent && !['Approved', 'Invoiced', 'Declined'].includes(j.status)).length,
-    approvals: s.jobs.filter(j => j.status === 'Waiting approval').length,
+    approvals: s.jobs.filter(j => j.status === 'Waiting approval').length + s.requests.filter(r => r.status === 'Waiting').length,
     safety: s.safety.filter(c => c.status === 'Overdue' || c.status === 'Missing').length,
   } as Partial<Record<Route, number>>;
 }
@@ -72,6 +72,7 @@ export function PageHeader({ title, action, crumbs, back }: { title: ReactNode; 
   const notes = [
     ...s.jobs.filter(j => j.urgent && j.status === 'New').map(j => ({ t: 'Emergency: ' + j.title, d: L.prop(j.property)?.address ?? '', r: 'jobs' as Route, id: j.id, tone: 'err' })),
     ...s.applicants.filter(a => a.stage === 4 && !a.rejected).map(a => ({ t: 'Ready for your review: ' + a.name, d: L.prop(a.property)?.address ?? '', r: 'lettings' as Route, id: a.id, tone: 'brand' })),
+    ...s.requests.filter(x => x.status === 'Waiting').map(x => ({ t: `${staff(x.from)?.name ?? 'Office Admin'} asked: ${x.title}`, d: x.about, r: 'approvals' as Route, id: x.id, tone: 'warn' })),
     ...s.signups.filter(x => x.status === 'Waiting').map(x => ({ t: 'New sign-up: ' + x.name, d: x.kind, r: 'signups' as Route, id: x.id, tone: 'info' })),
     ...s.enquiries.filter(e => e.stage === 'New').map(e => ({ t: 'New enquiry: ' + e.name, d: e.about, r: 'enquiries' as Route, id: e.id, tone: 'info' })),
     ...s.support.filter(x => x.status === 'Waiting').map(x => ({ t: 'Support access requested', d: x.from, r: 'support' as Route, id: x.id, tone: 'warn' })),

@@ -30,7 +30,7 @@ The client has approved this design. When editing:
 
 ## Structure
 - `src/main.tsx`: entry point. It wraps the app in HashRouter, then StoreProvider, then App, and loads `styles/fonts.css` (Montserrat), `index.css` and `styles/app.css`.
-- `src/pages/Landing.tsx`: public website at `#/home` (Services with "Full management & Maintenance" highlighted, Plans, the Genesis platform shown as phone mockups, About, Contact Us / "Join our Platform", FAQ; the header "Join Waitlist" button and portal buttons open a waitlist modal). Styles are the `.lp-` section at the end of `app.css`.
+- `src/pages/Landing.tsx`: public website at `#/home` (Services with "Full management & Maintenance" highlighted, Plans, the Genesis platform shown as two phone mockups (landlord app home and tenant app home), About, Contact Us / "Join our Platform", FAQ; the header "Join Waitlist" button and portal buttons open a waitlist modal). Styles are the `.lp-` section at the end of `app.css`.
 - `src/App.tsx`: the login gate (`#/login`), then the sidebar plus the page for the current route.
 - `src/Shell.tsx`: sidebar menu (`NAV`), page header (global search, alerts, calendar), breadcrumbs and Login (sign in, then a 6-digit security code; demo code `123456`; 5 wrong tries lock the account).
 - `src/ui.tsx`: shared UI. Chip, Btn, IBtn, Card, Avatar, Bar, Tabs, MiniSearch, Drawer, Modal, Field, Text, Select, KV, Note, Steps, Toasts, Reason (a modal that requires a reason), Kpi.
@@ -43,7 +43,7 @@ The client has approved this design. When editing:
   - `Landlords.tsx`: list + detail (properties, safety checks with done date/time, inspections, jobs, invoices, communication).
   - `Lettings.tsx`: 7-stage kanban + applicant detail page.
   - `Tenants.tsx`: Live / Moving out / Moved out + tenant profile (rent, KYC, home, communication, issues, move-out).
-  - `Properties.tsx`, `SignUps.tsx`, `Clients.tsx` (letting agents), `Contractors.tsx`, `Jobs.tsx` (job page shared with Clients), `Inspections.tsx`, `Approvals.tsx`, `Safety.tsx` (Compliance Centre), `Rent.tsx`, `Records.tsx` (Records + Support Access), `Reports.tsx`.
+  - `Properties.tsx`, `SignUps.tsx`, `Clients.tsx` (letting agents), `Contractors.tsx`, `Jobs.tsx` (job page shared with Clients), `Inspections.tsx`, `Approvals.tsx` (Approvals & Requests: over-limit jobs, requests from Office Admins such as create landlord with their enquiry conversation, plan change, pause contractor, unlock), `Safety.tsx` (Compliance Centre), `Rent.tsx`, `Records.tsx` (Records + Support Access), `Reports.tsx`.
   - `PropertyExtras.tsx`: property History (everything, earlier certificate versions kept) and Rent & invoices tabs. `PropertyPlan.tsx`: Property Management Plan (P1-10): check gaps → preview → save version → PDF; saved versions never change.
   - `docs.tsx`: the LSP paper template (`DocSheet`) used for quotes, invoices, job reports and plans; `QuoteBuilder` (line items), `InvoiceModal`, `JobReportModal`.
   - `shared.tsx`: flow helpers (approveJob, invoices) and shared modals. `tables.tsx`: shared certificate, inspection, job and invoice tables.

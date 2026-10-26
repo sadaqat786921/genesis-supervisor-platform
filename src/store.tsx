@@ -31,6 +31,7 @@ interface Store {
   activity: D.Activity[];
   locked: D.LockedRecord[]; setLocked: Setter<D.LockedRecord>;
   support: D.SupportReq[]; setSupport: Setter<D.SupportReq>;
+  requests: D.SupReq[]; setRequests: Setter<D.SupReq>;
   plans: D.PlanVersion[]; setPlans: Setter<D.PlanVersion>;
   payouts: Record<string, PayoutStatus>; setPayout: (id: string, st: PayoutStatus) => void;
 }
@@ -67,6 +68,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [locked, setLocked] = useList(D.LOCKED);
   const [support, setSupport] = useList(D.SUPPORT);
   const [plans, setPlans] = useList<D.PlanVersion>([]);
+  const [requests, setRequests] = useList(D.REQUESTS);
   const [payouts, setPayouts] = useState<Record<string, PayoutStatus>>({ L2: 'On hold', L6: 'Paid' });
 
   const go = useCallback((r: Route, d: string | null = null) => { nav('/' + r + (d ? '/' + encodeURIComponent(d) : '')); window.scrollTo({ top: 0 }); }, [nav]);
@@ -84,8 +86,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     route, detail, go, toast, toasts, log, activity,
     staff, setStaff, landlords, setLandlords, properties, setProperties, enquiries, setEnquiries, applicants, setApplicants, tenants, setTenants,
     signups, setSignups, clients, setClients, contractors, setContractors, jobs, setJobs, inspections, setInspections, safety, setSafety,
-    rent, setRent, invoices, setInvoices, tasks, setTasks, locked, setLocked, support, setSupport, plans, setPlans, payouts, setPayout,
-  }), [plans, setPlans, route, detail, go, toast, toasts, log, activity, staff, landlords, properties, enquiries, applicants, tenants, signups, clients, contractors, jobs, inspections, safety, rent, invoices, tasks, locked, support, payouts, setPayout, setStaff, setLandlords, setProperties, setEnquiries, setApplicants, setTenants, setSignups, setClients, setContractors, setJobs, setInspections, setSafety, setRent, setInvoices, setTasks, setLocked, setSupport]);
+    rent, setRent, invoices, setInvoices, tasks, setTasks, locked, setLocked, support, setSupport, plans, setPlans, requests, setRequests, payouts, setPayout,
+  }), [plans, setPlans, requests, setRequests, route, detail, go, toast, toasts, log, activity, staff, landlords, properties, enquiries, applicants, tenants, signups, clients, contractors, jobs, inspections, safety, rent, invoices, tasks, locked, support, payouts, setPayout, setStaff, setLandlords, setProperties, setEnquiries, setApplicants, setTenants, setSignups, setClients, setContractors, setJobs, setInspections, setSafety, setRent, setInvoices, setTasks, setLocked, setSupport]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

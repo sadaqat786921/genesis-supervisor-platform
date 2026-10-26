@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mail, UserCheck, UserPlus, TriangleAlert, Home, MessageCircle, CircleCheck, Wrench, Lock, ArrowRight, TrendingUp, Plus, CalendarDays, Clock, UserX } from 'lucide-react';
+import { Mail, UserCheck, UserPlus, TriangleAlert, Home, MessageCircle, CircleCheck, Wrench, Lock, ArrowRight, TrendingUp, Plus, CalendarDays, Clock, UserX, Send } from 'lucide-react';
 import { useStore, useLookups, money, rentStatus, staff, type Route } from '../store';
 import { ADMINS, PLAN, RENT_CHART, daysFrom, nowStamp } from '../data';
 import { Avatar, Bar, Btn, Card, Chip, Drawer, IBtn, KV, Kpi, Note, Tabs, Select } from '../ui';
@@ -20,6 +20,7 @@ export default function Today() {
   const attention = [
     ...s.jobs.filter(j => j.urgent && j.status === 'New').map(j => ({ kind: 'overdue', t: 'Emergency: ' + j.title, d: L.prop(j.property)?.address ?? '', owner: j.admin, next: 'Assign a contractor now', due: 'Today', r: 'jobs' as Route, id: j.id, tone: 'err' as const })),
     ...waiting.map(j => ({ kind: 'waiting', t: `${j.title} · ${money(j.price)}`, d: (L.prop(j.property)?.address ?? '') + ' · over the limit', owner: j.admin, next: 'Approve or ask the landlord', due: j.reported.split(',')[0].replace(' 2026', ''), r: 'approvals' as Route, id: j.id, tone: 'warn' as const })),
+    ...s.requests.filter(q => q.status === 'Waiting').map(q => ({ kind: 'waiting', t: `${q.kind} · ${q.title.split(': ').slice(-1)[0]}`, d: `Asked by ${staff(q.from)?.name} · ${q.about}`, owner: q.from, next: q.kind === 'New landlord' ? 'Create the landlord account' : 'Approve or decline the request', due: q.at.split(',')[0].replace(' 2026', ''), r: 'approvals' as Route, id: q.id, tone: 'warn' as const })),
     ...s.applicants.filter(a => a.stage === 4 && !a.rejected).map(a => ({ kind: 'waiting', t: `Ready for your review · ${a.name}`, d: L.prop(a.property)?.address ?? '', owner: a.admin, next: 'Approve and book move-in', due: 'Today', r: 'lettings' as Route, id: a.id, tone: 'info' as const })),
     ...late.map(r => { const t = L.tenant(r.tenant); return { kind: 'overdue', t: `Rent late · ${money(r.amount - r.paid)}`, d: (t?.name ?? '') + ', ' + (L.prop(t?.property)?.address ?? ''), owner: L.prop(t?.property)?.admin, next: 'Send a reminder or call', due: r.due.replace(' 2026', ''), r: 'rent' as Route, id: r.id, tone: 'err' as const }; }),
     ...s.safety.filter(c => c.status === 'Overdue' || c.status === 'Missing').map(c => ({ kind: 'overdue', t: `${c.kind} ${c.status === 'Missing' ? 'missing' : 'overdue'}`, d: L.prop(c.property)?.address ?? '', owner: L.prop(c.property)?.admin, next: c.status === 'Missing' ? 'Upload the certificate' : 'Book a qualified contractor', due: c.status === 'Missing' ? 'Now' : c.expires.replace(' 2026', ''), r: 'safety' as Route, id: c.id, tone: 'err' as const })),
@@ -51,7 +52,7 @@ export default function Today() {
           <div className="gring"><svg viewBox="0 0 176 176"><circle cx="88" cy="88" r="80" fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="14" /><circle cx="88" cy="88" r="80" fill="none" stroke="#5BAF00" strokeWidth="14" strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 80 * 0.92} 999`} transform="rotate(-90 88 88)" /></svg>
             <div className="stack" style={{ alignItems: 'center' }}><Home size={22} color="#5BAF00" /><b style={{ fontSize: 13 }}>169 of 184</b><span style={{ fontSize: 10.5, color: '#AEBBDA' }}>homes on track</span></div></div>
         </div>
-        <Card title="Needs your decision" action={<Chip tone="warn">{waiting.length} waiting</Chip>} style={{ width: 400, flex: 'none' }}>
+        <Card title="Needs your decision" action={<Chip tone="warn">{waiting.length + s.requests.filter(q => q.status === 'Waiting').length} waiting</Chip>} style={{ width: 400, flex: 'none' }}>
           {waiting.slice(0, 3).map(j => { const p = L.prop(j.property); const ll = L.landlord(p?.owner); return (
             <div className="lrow" key={j.id}>
               <span className="tile t-white" style={{ width: 36, height: 36 }}>{j.title.includes('Roof') ? <Home size={18} /> : j.title.includes('lock') ? <Lock size={18} /> : <Wrench size={18} />}</span>
@@ -59,8 +60,13 @@ export default function Today() {
               <IBtn sm icon={<MessageCircle size={16} />} label="Ask the landlord" onClick={() => { s.toast(`Quote sent to ${ll?.name} to approve`); s.log(`Asked ${ll?.name} to approve ${j.title} (${money(j.price)})`, 'Approvals & Budgets'); }} />
               <IBtn sm kind="success" icon={<CircleCheck size={18} />} label="Approve" onClick={() => approveJob(s, j, L)} />
             </div>); })}
-          {!waiting.length && <Note tone="ok">Nothing waiting. Every decision is made.</Note>}
-          {waiting.length > 3 && <button className="btn ghost sm" onClick={() => s.go('approvals')}>See all {waiting.length}</button>}
+          {s.requests.filter(q => q.status === 'Waiting').slice(0, Math.max(0, 3 - Math.min(3, waiting.length))).map(q => <div className="lrow" key={q.id}>
+            <span className="tile t-white" style={{ width: 36, height: 36 }}><Send size={18} /></span>
+            <button className="stack grow" style={{ border: 0, background: 'none', textAlign: 'left', padding: 0, minWidth: 0 }} onClick={() => s.go('approvals', q.id)}><b className="ellip">{q.title}</b><span className="caption">From {staff(q.from)?.name} · {q.kind}</span></button>
+            <IBtn sm icon={<ArrowRight size={16} />} label="Open request" onClick={() => s.go('approvals', q.id)} />
+          </div>)}
+          {!waiting.length && !s.requests.some(q => q.status === 'Waiting') && <Note tone="ok">Nothing waiting. Every decision is made.</Note>}
+          {waiting.length + s.requests.filter(q => q.status === 'Waiting').length > 3 && <button className="btn ghost sm" onClick={() => s.go('approvals')}>See all {waiting.length + s.requests.filter(q => q.status === 'Waiting').length}</button>}
         </Card>
       </div>
       <div className="grid g4">
