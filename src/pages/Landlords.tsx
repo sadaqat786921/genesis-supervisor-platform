@@ -24,7 +24,7 @@ function LandlordList() {
       <Kpi icon={<UserCheck size={18} />} tone="brand" label="Landlords" value={s.landlords.length} caption={`${s.landlords.filter(l => l.status === 'Invite sent').length} waiting to log in`} />
       <Kpi icon={<Home size={18} />} tone="info" label="Managed homes" value={s.properties.filter(p => p.managed).length} caption="across all landlords" onClick={() => s.go('properties')} />
       <Kpi icon={<Wallet size={18} />} tone="warn" label="Budgets over 70%" value={high} caption="properties, alert sent" onClick={() => s.go('approvals')} />
-      <Kpi icon={<ShieldCheck size={18} />} tone="ok" label="Plans" value={<span style={{ fontSize: 18 }}>{([12, 16, 20] as const).map(p => `${s.landlords.filter(l => l.plan === p).length}×${p}%`).join('  ')}</span>} caption="12% · 16% · 20%" />
+      <Kpi icon={<ShieldCheck size={18} />} tone="ok" label="Plans" value={<span style={{ fontSize: 18 }}>{([10, 12, 16, 20] as const).map(p => `${s.landlords.filter(l => l.plan === p).length}×${p}%`).join('  ')}</span>} caption="10% · 12% · 16% · 20%" />
     </div>
     <Card title="All landlords" sub="Click a landlord to see their homes, safety checks, inspections, jobs and money." action={<div className="toolbar"><MiniSearch value={q} onChange={setQ} placeholder="Search name or email" /><Tabs value={plan} onChange={setPlan} items={[{ id: 'all', label: 'All plans' }, { id: '12', label: '12%' }, { id: '16', label: '16%' }, { id: '20', label: '20%' }]} /></div>}>
       <div className="tablewrap"><table className="t"><thead><tr><th>Landlord</th><th>Plan</th><th>Homes</th><th>Repair budget used</th><th>Safety</th><th>Office Admin</th><th>Login</th></tr></thead><tbody>

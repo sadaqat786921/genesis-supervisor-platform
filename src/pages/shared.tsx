@@ -72,9 +72,9 @@ export function lockJob(s: S, j: Job, L: Lookups) {
 }
 
 /* ---------- modals ---------- */
-export function NewLandlordModal({ onClose, prefill, onCreated, from }: { onClose: () => void; prefill?: { name: string; email: string; phone: string; billing?: string; plan?: Plan; admin?: string }; onCreated?: (id: string) => void; from?: string }) {
+export function NewLandlordModal({ onClose, prefill, onCreated, from, skipProperty, checkFirst }: { onClose: () => void; prefill?: { name: string; email: string; phone: string; billing?: string; plan?: Plan; admin?: string }; onCreated?: (id: string) => void; from?: string; skipProperty?: boolean; checkFirst?: boolean }) {
   const s = useStore(); const L = useLookups();
-  const [step, setStep] = useState(prefill && !from ? 1 : 0);
+  const [step, setStep] = useState(prefill && !from && !checkFirst ? 1 : 0);
   const [q, setQ] = useState(prefill?.name ?? '');
   const [f, setF] = useState({ name: prefill?.name ?? '', email: prefill?.email ?? '', phone: prefill?.phone ?? '', billing: prefill?.billing ?? '', admin: prefill?.admin ?? 'et' });
   const [plan, setPlan] = useState<Plan>(prefill?.plan ?? 16);
@@ -109,13 +109,14 @@ export function NewLandlordModal({ onClose, prefill, onCreated, from }: { onClos
       <Field label="Office Admin in charge"><Select value={f.admin} onChange={v => setF({ ...f, admin: v })} options={L.admins.map(a => ({ value: a.id, label: a.name }))} /></Field>
       <div style={{ gridColumn: '1/-1' }}><Field label="Billing address"><Text value={f.billing} onChange={v => setF({ ...f, billing: v })} placeholder="House, street, town, postcode" /></Field></div>
     </div>}
-    {step === 2 && <><div className="grid g3">{([12, 16, 20] as Plan[]).map(p => <button key={p} className={`choice${plan === p ? ' on' : ''}`} onClick={() => setPlan(p)}><b style={{ fontSize: 20 }}>{p}%</b><span className="small">Job limit {money(PLAN[p].limit)}</span><span className="caption">Repairs above this come to you to approve.</span></button>)}</div>
+    {step === 2 && <><div className="grid g4">{([10, 12, 16, 20] as Plan[]).map(p => <button key={p} className={`choice${plan === p ? ' on' : ''}`} onClick={() => setPlan(p)}><b style={{ fontSize: 20 }}>{p}%</b><span className="small">{p === 10 ? 'Management Only' : `Job limit ${money(PLAN[p].limit)}`}</span><span className="caption">{p === 10 ? 'No repairs included. Every repair needs the landlord’s OK.' : 'Repairs above this come to you to approve.'}</span></button>)}</div>
       <Field label="Agreement start date"><input className="input" type="date" value={start} onChange={e => setStart(e.target.value)} /></Field></>}
-    {step === 3 && <div className="row" style={{ gap: 16, alignItems: 'stretch' }}>
+    {step === 3 && skipProperty && <Note>The property is added when the takeover is confirmed in Planned Switch, so it isn't counted as managed before then. Click "Skip for now".</Note>}
+    {step === 3 && !skipProperty && <div className="row" style={{ gap: 16, alignItems: 'stretch' }}>
       <div style={{ width: 240, flex: 'none' }}><PhotoPicker value={prop.photo} onChange={v => setProp({ ...prop, photo: v })} /></div>
       <div className="grid g2 grow" style={{ gap: 12 }}>
         <Field label="Address"><Text value={prop.address} onChange={v => setProp({ ...prop, address: v })} placeholder="12 Oak Street" /></Field>
-        <Field label="Town and postcode"><Text value={prop.area} onChange={v => setProp({ ...prop, area: v })} placeholder="Leeds LS6" /></Field>
+        <Field label="Town and postcode"><Text value={prop.area} onChange={v => setProp({ ...prop, area: v })} placeholder="London N1" /></Field>
         <Field label="Type"><Select value={prop.type} onChange={v => setProp({ ...prop, type: v as Property['type'] })} options={['House', 'Flat', 'HMO'].map(x => ({ value: x, label: x === 'HMO' ? 'Shared house (HMO)' : x }))} /></Field>
         {prop.type === 'HMO' ? <Field label="Rooms to let"><Text value={prop.rooms} onChange={v => setProp({ ...prop, rooms: v })} /></Field> : <Field label="Bedrooms"><Text value={prop.beds} onChange={v => setProp({ ...prop, beds: v })} /></Field>}
         <Field label="Monthly rent (£)"><Text value={prop.rent} onChange={v => setProp({ ...prop, rent: v })} placeholder="1150" /></Field>
@@ -142,7 +143,7 @@ export function AddPropertyModal({ owner, managed, onClose }: { owner: string; m
       <div style={{ width: 240, flex: 'none' }}><PhotoPicker value={f.photo} onChange={v => setF({ ...f, photo: v })} /></div>
       <div className="grid g2 grow" style={{ gap: 12 }}>
         <Field label="Address"><Text value={f.address} onChange={v => setF({ ...f, address: v })} placeholder="12 Oak Street" /></Field>
-        <Field label="Town and postcode"><Text value={f.area} onChange={v => setF({ ...f, area: v })} placeholder="Leeds LS6" /></Field>
+        <Field label="Town and postcode"><Text value={f.area} onChange={v => setF({ ...f, area: v })} placeholder="London N1" /></Field>
         <Field label="Type"><Select value={f.type} onChange={v => setF({ ...f, type: v as Property['type'] })} options={['House', 'Flat', 'HMO'].map(x => ({ value: x, label: x === 'HMO' ? 'Shared house (HMO)' : x }))} /></Field>
         {f.type === 'HMO' ? <Field label="Rooms to let"><Text value={f.rooms} onChange={v => setF({ ...f, rooms: v })} /></Field> : <Field label="Bedrooms"><Text value={f.beds} onChange={v => setF({ ...f, beds: v })} /></Field>}
         {managed && <Field label="Monthly rent (£)"><Text value={f.rent} onChange={v => setF({ ...f, rent: v })} placeholder="1150" /></Field>}

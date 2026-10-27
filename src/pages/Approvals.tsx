@@ -5,6 +5,7 @@ import { PLAN, nowStamp, type Comm, type Plan, type SupReq } from '../data';
 import { ActionCard, Avatar, Bar, Btn, Card, Chip, CommModal, CommsLog, DetailHead, KV, Kpi, Note, PageTabs, Reason, Tabs, Timeline, Empty, sortComms, Modal, When } from '../ui';
 import { PageHeader, crumbsFor } from '../Shell';
 import { HomeCard, NewLandlordModal, adminName, approveJob, jobEvent, jobTone } from './shared';
+import { linkLeadLandlord } from './Switch';
 
 export function Approvals() {
   const s = useStore();
@@ -129,6 +130,7 @@ function RequestPage({ id }: { id: string }) {
   const [m, setM] = useState<'' | 'create' | 'decline' | 'approve'>('');
   const from = adminName(q.from); const waiting = q.status === 'Waiting';
   const enq = q.data?.enquiry ? s.enquiries.find(e => e.id === q.data!.enquiry) : undefined;
+  const lead = q.data?.lead ? s.leads.find(x => x.id === q.data!.lead) : undefined;
   const ll = q.data?.landlord ? L.landlord(q.data.landlord) : undefined;
   const con = q.data?.contractor ? L.contractor(q.data.contractor) : undefined;
   const rec = q.data?.locked ? s.locked.find(r => r.id === q.data!.locked) : undefined;
@@ -162,6 +164,8 @@ function RequestPage({ id }: { id: string }) {
           {dup && <Note tone="err">{dup.name} ({dup.email}) is already a landlord. Decline this request or open their record.</Note>}
           {q.kind === 'New landlord' && !dup && <Note tone="ok">Duplicate check: no landlord with this email yet.</Note>}
         </Card>
+        {lead && <Card title={`${from.split(' ')[0]}'s conversation with ${lead.name.split(' ')[0]}`} sub="Planned Switch lead: every call, email and note, with the date and time." action={<Btn sm kind="ghost" icon={<ArrowRight size={14} />} onClick={() => s.go('switch', lead.id)}>Open lead</Btn>}>
+          <CommsLog items={lead.comms} to={lead.email} emptyText="No messages yet." /></Card>}
         {enq && <Card title={`${from.split(' ')[0]}'s conversation with ${enq.name.split(' ')[0]}`} sub="Every call, email and note from the enquiry, with the date and time." action={<Btn sm kind="ghost" icon={<ArrowRight size={14} />} onClick={() => s.go('enquiries', enq.id)}>Open enquiry</Btn>}>
           <div className="quote"><MessageSquareReply size={18} /><p>“{enq.message}”</p></div>
           <CommsLog items={enq.comms} to={enq.email} emptyText="No messages yet." /></Card>}
@@ -175,8 +179,9 @@ function RequestPage({ id }: { id: string }) {
         <Card title="Office Admin"><div className="flex"><Avatar id={q.from} size="md" /><div className="stack grow"><b>{from}</b><span className="caption">Sent this request</span></div></div><div className="flex"><Btn sm kind="outline" icon={<Phone size={14} />} onClick={() => s.toast('Calling ' + from)}>Call</Btn><Btn sm kind="outline" icon={<ArrowRight size={14} />} onClick={() => s.go('team', q.from)}>Profile</Btn></div></Card>
       </div>
     </div>
-    {m === 'create' && q.data && <NewLandlordModal from={from} prefill={{ name: q.data.name, email: q.data.email, phone: q.data.phone, billing: q.data.billing, plan: +q.data.plan as Plan, admin: q.from }} onClose={() => setM('')} onCreated={lid => {
+    {m === 'create' && q.data && <NewLandlordModal from={from} skipProperty={!!lead} prefill={{ name: q.data.name, email: q.data.email, phone: q.data.phone, billing: q.data.billing, plan: +q.data.plan as Plan, admin: q.from }} onClose={() => setM('')} onCreated={lid => {
       if (enq) s.setEnquiries(es => es.map(e => e.id === enq.id ? { ...e, stage: 'Converted', converted: lid, comms: [...e.comms, { id: 'cm' + Date.now(), at: nowStamp(), by: 'Sarah Khan', channel: 'System', text: `Landlord account created from ${from}'s request. Login email sent.` }] } : e));
+      if (lead) linkLeadLandlord(s, lead.id, lid, 'Sarah Khan');
       answer(true, `Landlord account created and login email sent from Outlook.`, { route: 'landlords', id: lid });
     }} />}
     {m === 'approve' && <Modal title="Approve this request?" sub={q.title} onClose={() => setM('')} footer={<><Btn kind="outline" onClick={() => setM('')}>Cancel</Btn><Btn icon={<CheckCircle2 size={16} />} onClick={approve}>Approve</Btn></>}>

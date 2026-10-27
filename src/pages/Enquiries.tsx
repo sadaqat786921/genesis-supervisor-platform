@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import { Inbox, UserCheck, PhoneCall, Mail, CheckCircle2, XCircle, ShieldCheck, KeyRound, UserPlus, ArrowRight, RotateCcw, Archive, Home, MessageSquareText } from 'lucide-react';
+import { Inbox, UserCheck, PhoneCall, Mail, CheckCircle2, XCircle, ShieldCheck, KeyRound, UserPlus, ArrowRight, RotateCcw, Archive, Home, MessageSquareText, ArrowRightLeft } from 'lucide-react';
 import { useStore, useLookups, money } from '../store';
 import { nowStamp, type Comm, type Enquiry } from '../data';
 import { ActionCard, Avatar, Btn, Card, Chip, CommModal, CommsLog, DetailHead, Field, HSteps, KV, Kpi, MiniSearch, Modal, Note, Select, Tabs, When, Empty, Area, Text, dateLabel } from '../ui';
 import { PageHeader, crumbsFor } from '../Shell';
+import { moveEnquiryToSwitch, AREAS } from './Switch';
 import { AssignAdminModal, NewLandlordModal, adminName, firstName } from './shared';
 
 const stageTone = { New: 'info', Assigned: 'brand', Contacted: 'warn', Converted: 'ok', Closed: 'neutral' } as const;
-const convertedLabel = (e: Enquiry) => e.kind === 'Landlord' ? 'Landlord created' : 'Moved to Lettings';
+const convertedLabel = (e: Enquiry) => e.switchLead ? 'Moved to Planned Switch' : e.kind === 'Landlord' ? 'Landlord created' : 'Moved to Lettings';
 const stageLabel = (e: Enquiry) => e.stage === 'Converted' ? convertedLabel(e) : e.stage === 'Contacted' ? 'Contacted' : e.stage;
 
 export function Enquiries() {
@@ -51,7 +52,7 @@ function EnquiryList() {
 function EnquiryPage({ id }: { id: string }) {
   const s = useStore(); const L = useLookups();
   const e = s.enquiries.find(x => x.id === id)!;
-  const [assign, setAssign] = useState(false); const [close, setClose] = useState(false); const [contact, setContact] = useState<'' | 'Call' | 'Email'>(''); const [newLL, setNewLL] = useState(false); const [toLet, setToLet] = useState(false);
+  const [assign, setAssign] = useState(false); const [close, setClose] = useState(false); const [contact, setContact] = useState<'' | 'Call' | 'Email'>(''); const [newLL, setNewLL] = useState(false); const [toLet, setToLet] = useState(false); const [toSwitch, setToSwitch] = useState(false);
   const asked = s.requests.find(r => r.kind === 'New landlord' && r.status === 'Waiting' && r.data?.enquiry === id);
   const p = L.prop(e.property);
   const isLL = e.kind === 'Landlord';
@@ -89,7 +90,9 @@ function EnquiryPage({ id }: { id: string }) {
         {e.stage === 'Contacted' && (isLL
           ? (asked ? <ActionCard tone="warn" title={`${adminName(asked.from)} asked you`} text={`${adminName(asked.from)} spoke to ${firstName(e.name)} and sent the details on ${asked.at}. Create the landlord account from the request. The form is filled in.`}><Btn block icon={<UserPlus size={16} />} onClick={() => s.go('approvals', asked.id)}>Open request and create landlord</Btn></ActionCard> : <ActionCard tone="ok" text={`${firstName(e.name)} has been contacted. If they want to go ahead, create their landlord account.`}><Btn block icon={<UserPlus size={16} />} onClick={() => setNewLL(true)}>Create landlord account</Btn></ActionCard>)
           : <ActionCard tone="ok" text={`${firstName(e.name)} has been contacted. If they want to apply, move them to Lettings as a new applicant.`}><Btn block icon={<KeyRound size={16} />} onClick={() => setToLet(true)}>Move to Lettings</Btn></ActionCard>)}
-        {e.stage === 'Converted' && <ActionCard tone="ok" title="Done" text={isLL ? 'This enquiry became a landlord account.' : 'This enquiry is now an applicant in Lettings.'}><Btn block icon={<ArrowRight size={16} />} onClick={() => e.converted && s.go(isLL ? 'landlords' : 'lettings', e.converted)}>{isLL ? 'Open landlord record' : 'Open in Lettings'}</Btn></ActionCard>}
+        {e.stage === 'Contacted' && isLL && <ActionCard tone="neutral" title="Already has a managing agent?" text={`If ${firstName(e.name)}'s homes are managed by another agent, move them to Planned Switch. Their contract and notice dates are checked there.`}><Btn block kind="outline" icon={<ArrowRightLeft size={16} />} onClick={() => setToSwitch(true)}>Move to Planned Switch</Btn></ActionCard>}
+        {e.stage === 'Converted' && e.switchLead && <ActionCard tone="ok" title="Done" text="This landlord already has a managing agent. They are now a lead in Planned Switch, with all the calls and notes."><Btn block icon={<ArrowRight size={16} />} onClick={() => s.go('switch', e.switchLead)}>Open in Planned Switch</Btn></ActionCard>}
+        {e.stage === 'Converted' && !e.switchLead && <ActionCard tone="ok" title="Done" text={isLL ? 'This enquiry became a landlord account.' : 'This enquiry is now an applicant in Lettings.'}><Btn block icon={<ArrowRight size={16} />} onClick={() => e.converted && s.go(isLL ? 'landlords' : 'lettings', e.converted)}>{isLL ? 'Open landlord record' : 'Open in Lettings'}</Btn></ActionCard>}
         {e.stage === 'Closed' && e.closed && <ActionCard tone="neutral" title="Closed" text={e.closed.reason}><KV rows={[['Note', e.closed.note || '—'], ['Closed', e.closed.at], ['By', e.closed.by]]} /></ActionCard>}
         <Card title="Office Admin">{e.admin ? <div className="flex"><Avatar id={e.admin} size="md" /><div className="stack grow"><b>{adminName(e.admin)}</b><span className="caption">Following this up</span></div>{live && <Btn sm kind="ghost" onClick={() => setAssign(true)}>Change</Btn>}</div> : <Note tone="warn">No one is following this up yet.</Note>}</Card>
         <Card title="Details"><KV rows={[['Type', e.kind], ['About', e.about], ['Source', e.source], ['Received', e.received]]} /></Card>
@@ -100,6 +103,7 @@ function EnquiryPage({ id }: { id: string }) {
     {close && <CloseEnquiry e={e} onClose={() => setClose(false)} onDone={(reason, note) => { upd({ stage: 'Closed', closed: { reason, note, at: nowStamp(), by: 'Sarah Khan' } }, `Closed enquiry from ${e.name}: ${reason}`, sys(`Closed: ${reason}${note ? '. ' + note : ''}`)); setClose(false); }} />}
     {newLL && <NewLandlordModal prefill={{ name: e.name, email: e.email, phone: e.phone }} onClose={() => setNewLL(false)} onCreated={lid => { upd({ stage: 'Converted', converted: lid }, `Enquiry from ${e.name} became a landlord account`, sys('Landlord account created and login email sent.')); }} />}
     {toLet && <MoveToLettings e={e} onClose={() => setToLet(false)} />}
+    {toSwitch && <MoveToSwitch e={e} onClose={() => setToSwitch(false)} />}
   </>;
 }
 
@@ -134,11 +138,21 @@ function MoveToLettings({ e, onClose }: { e: Enquiry; onClose: () => void }) {
       <Field label="Household"><Text value={d.household} onChange={v => setD({ ...d, household: v })} placeholder="e.g. 2 adults, 1 child" /></Field>
       <Field label="Wants to move in"><input className="input" type="date" value={d.moveIn} onChange={ev => setD({ ...d, moveIn: ev.target.value })} /></Field>
       <Field label="Budget (£ pcm)"><Text value={d.budget} onChange={v => setD({ ...d, budget: v })} placeholder={String(p?.type === 'HMO' ? 440 : p?.rent ?? '')} /></Field>
-      <Field label="Work"><Text value={d.work} onChange={v => setD({ ...d, work: v })} placeholder="e.g. Nurse, Leeds General Infirmary" /></Field>
+      <Field label="Work"><Text value={d.work} onChange={v => setD({ ...d, work: v })} placeholder="e.g. Nurse, Whittington Hospital" /></Field>
       <Field label="Yearly income (£)"><Text value={d.income} onChange={v => setD({ ...d, income: v })} placeholder="e.g. 32000" /></Field>
       <Field label="Pets"><Text value={d.pets} onChange={v => setD({ ...d, pets: v })} placeholder="None" /></Field>
     </div>
     <Field label="Lives now at"><Text value={d.current} onChange={v => setD({ ...d, current: v })} placeholder="Current address" /></Field>
     <Note>Their calls, emails and notes move with them.</Note>
+  </Modal>;
+}
+
+function MoveToSwitch({ e, onClose }: { e: Enquiry; onClose: () => void }) {
+  const s = useStore();
+  const [f, setF] = useState({ agent: '', postcode: '', area: 'Islington', address: e.about, timeframe: 'Not sure' });
+  return <Modal title="Move to Planned Switch" sub={`${e.name} already has a managing agent. They become a Planned Switch lead and leave Enquiries. Calls and notes move with them.`} onClose={onClose}
+    footer={<><Btn kind="outline" onClick={onClose}>Cancel</Btn><Btn icon={<ArrowRightLeft size={16} />} onClick={() => { const id = moveEnquiryToSwitch(s, e, f); onClose(); s.go('switch', id); }}>Move to Planned Switch</Btn></>}>
+    <div className="grid g2"><Field label="Current agent"><Text value={f.agent} onChange={v => setF({ ...f, agent: v })} placeholder="e.g. Foxtons" /></Field><Field label="When they want to switch"><Select value={f.timeframe} onChange={v => setF({ ...f, timeframe: v })} options={['Now', 'In the next 6 months', 'Early 2027', 'Not sure'].map(x => ({ value: x, label: x }))} /></Field></div>
+    <div className="grid g3"><Field label="Area"><Select value={f.area} onChange={v => setF({ ...f, area: v })} options={AREAS.map(a => ({ value: a, label: a }))} /></Field><Field label="Postcode"><Text value={f.postcode} onChange={v => setF({ ...f, postcode: v })} placeholder="N1 0RW" /></Field><Field label="Address"><Text value={f.address} onChange={v => setF({ ...f, address: v })} /></Field></div>
   </Modal>;
 }
