@@ -22,8 +22,9 @@ import { Safety } from './pages/Safety';
 import { Rent } from './pages/Rent';
 import { Records, Support } from './pages/Records';
 import { Reports } from './pages/Reports';
+import { VatSettings } from './pages/Money';
 
-const PAGES = { today: Today, team: TeamWork, enquiries: Enquiries, switch: Switch, landlords: Landlords, lettings: Lettings, tenants: Tenants, properties: Properties, signups: SignUps, clients: Clients, contractors: Contractors, jobs: Jobs, inspections: Inspections, approvals: Approvals, safety: Safety, rent: Rent, records: Records, support: Support, reports: Reports };
+const PAGES = { today: Today, team: TeamWork, enquiries: Enquiries, switch: Switch, landlords: Landlords, lettings: Lettings, tenants: Tenants, properties: Properties, signups: SignUps, clients: Clients, contractors: Contractors, jobs: Jobs, inspections: Inspections, approvals: Approvals, safety: Safety, rent: Rent, records: Records, support: Support, reports: Reports, settings: VatSettings };
 
 const KEY = 'genesis-signed-in';
 const read = () => { try { return sessionStorage.getItem(KEY) === '1'; } catch { return false; } };

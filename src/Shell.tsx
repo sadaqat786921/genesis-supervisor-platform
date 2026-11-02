@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react';
 import {
+  Settings,
   LayoutDashboard, ArrowRightLeft, Users, Mail, User, KeyRound, UserCheck, Home, UserPlus, Briefcase, Wrench, ClipboardCheck, HardHat, ArrowLeft,
   CircleCheck, ShieldCheck, PoundSterling, History, Lock, FileBarChart, PanelLeft, LogOut, Search, Bell, CalendarDays, ChevronRight, ArrowRight, Eye, EyeOff, ShieldAlert,
 } from 'lucide-react';
@@ -12,7 +13,7 @@ export const NAV: { group: string; items: { id: Route; label: string; icon: type
   { group: 'Homes & People', items: [{ id: 'landlords', label: 'Landlords', icon: User }, { id: 'lettings', label: 'Lettings', icon: KeyRound }, { id: 'tenants', label: 'Tenants', icon: UserCheck }, { id: 'properties', label: 'Properties', icon: Home }] },
   { group: 'Partners & Work', items: [{ id: 'signups', label: 'Sign-Ups', icon: UserPlus }, { id: 'clients', label: 'Clients', icon: Briefcase }, { id: 'contractors', label: 'Contractors', icon: HardHat }, { id: 'jobs', label: 'Jobs', icon: Wrench }, { id: 'inspections', label: 'Inspections', icon: ClipboardCheck }] },
   { group: 'Checks & Money', items: [{ id: 'approvals', label: 'Approvals & Requests', icon: CircleCheck }, { id: 'safety', label: 'Safety & Compliance', icon: ShieldCheck }, { id: 'rent', label: 'Rent & Invoices', icon: PoundSterling }] },
-  { group: 'Records', items: [{ id: 'records', label: 'Records & History', icon: History }, { id: 'support', label: 'Support Access', icon: Lock }, { id: 'reports', label: 'Reports', icon: FileBarChart }] },
+  { group: 'Records', items: [{ id: 'records', label: 'Records & History', icon: History }, { id: 'support', label: 'Support Access', icon: Lock }, { id: 'reports', label: 'Reports', icon: FileBarChart }, { id: 'settings', label: 'Settings', icon: Settings }] },
 ];
 export const LABEL: Record<Route, string> = Object.fromEntries(NAV.flatMap(g => g.items.map(i => [i.id, i.label]))) as Record<Route, string>;
 const GROUP: Record<Route, string> = Object.fromEntries(NAV.flatMap(g => g.items.map(i => [i.id, g.group]))) as Record<Route, string>;

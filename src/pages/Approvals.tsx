@@ -35,7 +35,7 @@ function ApprovalList() {
       <Kpi icon={<AlertTriangle size={18} />} tone="err" label="Budgets over 90%" value={props.filter(p => p.used / p.budget >= .9).length} caption="properties · landlord told" active={tab === 'budgets'} onClick={() => setTab('budgets')} />
       <Kpi icon={<Gauge size={18} />} tone="ok" label="Budgets under 70%" value={props.filter(p => p.used / p.budget < .7).length} caption={`of ${props.length} properties`} onClick={() => setTab('budgets')} />
     </div>
-    <Tabs value={tab} onChange={setTab} items={[{ id: 'queue', label: 'Waiting approval', count: queue.length }, { id: 'requests', label: 'From Office Admins', count: reqs.length }, { id: 'budgets', label: 'Repair budgets' }, { id: 'decided', label: 'Decided', count: decided.length + doneReqs.length }]} />
+    <Tabs value={tab} onChange={setTab} items={[{ id: 'queue', label: 'Waiting approval', count: queue.length }, { id: 'requests', label: 'From Office Admins', count: reqs.length }, { id: 'budgets', label: 'Maintenance budgets' }, { id: 'decided', label: 'Decided', count: decided.length + doneReqs.length }]} />
     {tab === 'queue' && <Card title="Jobs over the landlord's limit" sub="Click a job to see the budget, the quote and every message with the landlord. Then approve or decline.">
       {queue.length ? <div className="col" style={{ gap: 12 }}>{queue.map(j => { const p = L.prop(j.property)!; const ll = L.landlord(p.owner)!; const after = p.budget ? Math.round((p.used + j.price) / p.budget * 100) : 0; const last = sortComms(j.comms)[0]; return (
         <div key={j.id} className="apcard" role="button" tabIndex={0} onClick={() => s.go('approvals', j.id)}>
