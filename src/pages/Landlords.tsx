@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Plus, Mail, Home, UserCheck, Pencil, ShieldCheck, ClipboardCheck, Wrench, Receipt, ArrowRight, Phone, Wallet } from 'lucide-react';
 import { useStore, useLookups, money, landlordBudget, budgetTone } from '../store';
 import { PLAN, type Comm } from '../data';
-import { Avatar, Bar, Btn, Card, Chip, DetailHead, Field, KV, Kpi, MiniSearch, Modal, Note, PageTabs, Select, Stat, Tabs, Text, Timeline, CommsLog, ActionCard, Empty , FilterBar, applyFlt, useFlt } from '../ui';
+import { Avatar, Bar, Btn, Card, Chip, DetailHead, Field, KV, Kpi, MiniSearch, Modal, Note, PageTabs, Select, Stat, Tabs, Text, Timeline, CommsLog, ActionCard, Empty , FilterBar, applyFlt, useFlt, yearsOf } from '../ui';
 import { PlanPrice, AllowanceCard } from './Money';
 import { feeOf, pctText, isLeased } from '../pricing';
 import { PageHeader, crumbsFor } from '../Shell';
@@ -75,7 +75,7 @@ function LandlordPage({ id }: { id: string }) {
       <div className="col">
         <Card title="Needs attention" sub="Anything for this landlord that is late, missing or waiting.">
           {bad.length + waiting.length ? <div className="divlist">
-            {waiting.map(j => <button key={j.id} className="item click" onClick={() => s.go('approvals', j.id)}><span className="tile t-warn"><Wrench size={16} /></span><div className="stack grow"><b>{j.title} · {money(j.price)}</b><span className="caption">{L.prop(j.property)?.address} · over the {money(PLAN[l.plan].limit)} job limit</span></div><Chip tone="warn">Approve</Chip></button>)}
+            {waiting.map(j => <button key={j.id} className="item click" onClick={() => s.go('approvals', j.id)}><span className="tile t-warn"><Wrench size={16} /></span><div className="stack grow"><b>{j.title} · {money(j.price)}</b><span className="caption">{L.prop(j.property)?.address} · {j.price > PLAN[l.plan].limit ? "over" : "under"} the {money(PLAN[l.plan].limit)} job limit</span></div><Chip tone="warn">Approve</Chip></button>)}
             {bad.map(c => <button key={c.id} className="item click" onClick={() => s.go('safety', c.id)}><span className={`tile t-${certTone(c.status)}`}><ShieldCheck size={16} /></span><div className="stack grow"><b>{c.kind}</b><span className="caption">{L.prop(c.property)?.address} · {c.status === 'Missing' ? 'no certificate' : 'ends ' + c.expires}</span></div><Chip tone={certTone(c.status)}>{c.status}</Chip></button>)}
           </div> : <Note tone="ok">Nothing needs action for {l.name}.</Note>}
         </Card>
@@ -108,7 +108,7 @@ function LandlordPage({ id }: { id: string }) {
     {tab === 'money' && <Card title="Invoices to this landlord" action={<Btn sm kind="ghost" icon={<Receipt size={14} />} onClick={() => s.go('rent')}>Rent & Invoices</Btn>}><InvoiceTable list={invs} /></Card>}
     {tab === 'comms' && <div className="dgrid"><Card title="Communication" sub="Calls, emails and notes with this landlord."><CommsLog items={l.comms} to={l.email} onAdd={addComm} /></Card>
       <ActionCard title="Tip" tone="neutral" text="Budget alert emails and approval requests are saved here automatically." /></div>}
-    {tab === 'history' && <Card title="History" sub="Everything that happened, with the date and time."><FilterBar f={hf} set={setHf} placeholder="Search history" /><Timeline items={applyFlt([...acts.map(a => ({ at: a.at, text: a.what, by: a.who })), { at: l.start, text: `Account created on the ${l.plan}% plan`, by: 'Sarah Khan' }], hf, { text: x => `${x.text} ${x.by}`, date: x => x.at })} /></Card>}
+    {tab === 'history' && <Card title="History" sub="Everything that happened, with the date and time."><FilterBar f={hf} set={setHf} placeholder="Search history" years={yearsOf([...acts.map(a => a.at), l.start], x => x)} /><Timeline items={applyFlt([...acts.map(a => ({ at: a.at, text: a.what, by: a.who })), { at: l.start, text: `Account created on the ${l.plan}% plan`, by: 'Sarah Khan' }], hf, { text: x => `${x.text} ${x.by}`, date: x => x.at })} /></Card>}
 
     {addP && <AddPropertyModal owner={id} managed onClose={() => setAddP(false)} />}
     {edit && <EditLandlord id={id} onClose={() => setEdit(false)} />}

@@ -4,7 +4,7 @@ import { useStore, useLookups, money, rentStatus, staff, type Route } from '../s
 import { ADMINS, PLAN, RENT_CHART, daysFrom, nowStamp } from '../data';
 import { Avatar, Bar, Btn, Card, Chip, Drawer, IBtn, KV, Kpi, Note, Tabs, Select } from '../ui';
 import { PageHeader } from '../Shell';
-import { approveJob, NewLandlordModal } from './shared';
+import { approveJob, NewLandlordModal, overLimit } from './shared';
 
 export default function Today() {
   const s = useStore();
@@ -19,7 +19,7 @@ export default function Today() {
 
   const attention = [
     ...s.jobs.filter(j => j.urgent && j.status === 'New').map(j => ({ kind: 'overdue', t: 'Emergency: ' + j.title, d: L.prop(j.property)?.address ?? '', owner: j.admin, next: 'Assign a contractor now', due: 'Today', r: 'jobs' as Route, id: j.id, tone: 'err' as const })),
-    ...waiting.map(j => ({ kind: 'waiting', t: `${j.title} · ${money(j.price)}`, d: (L.prop(j.property)?.address ?? '') + ' · over the limit', owner: j.admin, next: 'Approve or ask the landlord', due: j.reported.split(',')[0].replace(' 2026', ''), r: 'approvals' as Route, id: j.id, tone: 'warn' as const })),
+    ...waiting.map(j => ({ kind: 'waiting', t: `${j.title} · ${money(j.price)}`, d: (L.prop(j.property)?.address ?? '') + (overLimit(j, L) ? ' · over the limit' : ' · under the limit'), owner: j.admin, next: 'Approve or ask the landlord', due: j.reported.split(',')[0].replace(' 2026', ''), r: 'approvals' as Route, id: j.id, tone: 'warn' as const })),
     ...s.requests.filter(q => q.status === 'Waiting').map(q => ({ kind: 'waiting', t: `${q.kind} · ${q.title.split(': ').slice(-1)[0]}`, d: `Asked by ${staff(q.from)?.name} · ${q.about}`, owner: q.from, next: q.kind === 'New landlord' ? 'Create the landlord account' : 'Approve or decline the request', due: q.at.split(',')[0].replace(' 2026', ''), r: 'approvals' as Route, id: q.id, tone: 'warn' as const })),
     ...s.applicants.filter(a => a.stage === 4 && !a.rejected).map(a => ({ kind: 'waiting', t: `Ready for your review · ${a.name}`, d: L.prop(a.property)?.address ?? '', owner: a.admin, next: 'Approve and book move-in', due: 'Today', r: 'lettings' as Route, id: a.id, tone: 'info' as const })),
     ...late.map(r => { const t = L.tenant(r.tenant); return { kind: 'overdue', t: `Rent late · ${money(r.amount - r.paid)}`, d: (t?.name ?? '') + ', ' + (L.prop(t?.property)?.address ?? ''), owner: L.prop(t?.property)?.admin, next: 'Send a reminder or call', due: r.due.replace(' 2026', ''), r: 'rent' as Route, id: r.id, tone: 'err' as const }; }),

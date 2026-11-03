@@ -50,7 +50,7 @@ function SignUpPage({ id }: { id: string }) {
   const approve = () => {
     let newId = '';
     if (!contractor) { newId = 'A' + (Date.now() % 1000); s.setClients(a => [...a, { id: newId, name: x.name, contact: x.contact, email: x.email, phone: x.phone, address: x.address, status: 'Active', joined: '15 Oct 2026', terms: '30 days' }]); }
-    else { newId = 'C' + (Date.now() % 1000); s.setContractors(c => [...c, { id: newId, name: x.name, type: x.kind.includes('Inspector') ? 'Site Inspector' : 'Trade', trade: x.trades ?? 'Site Inspector', contact: x.contact, email: x.email, phone: x.phone, address: x.address, areas: x.areas, joined: '15 Oct 2026', status: 'Active', kyc: x.docs, rating: 5, pastJobs: 0, bills: [] }]); }
+    else { newId = 'C' + (Date.now() % 1000); s.setContractors(c => [...c, { id: newId, name: x.name, type: x.kind.includes('Inspector') ? 'Site Inspector' : 'Trade', trade: x.trades ?? 'Site Inspector', contact: x.contact, email: x.email, phone: x.phone, address: x.address, areas: x.areas, joined: '15 Oct 2026', status: 'Active', kyc: x.docs, rating: 5, rate: 45, pastJobs: 0, bills: [] }]); }
     upd({ status: 'Approved', note: newId }, `Approved ${x.name}. Login email sent.`, mail('Welcome to LSP · your Genesis login', 'Your application is approved. Use the link to set your password.'));
   };
   return <>

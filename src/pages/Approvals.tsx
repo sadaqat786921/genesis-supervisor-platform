@@ -4,7 +4,7 @@ import { useStore, useLookups, money, landlordBudget, budgetTone, type Route } f
 import { PLAN, nowStamp, type Comm, type Plan, type SupReq } from '../data';
 import { ActionCard, Avatar, Bar, Btn, Card, Chip, CommModal, CommsLog, DetailHead, KV, Kpi, Note, PageTabs, Reason, Tabs, Timeline, Empty, sortComms, Modal, When } from '../ui';
 import { PageHeader, crumbsFor } from '../Shell';
-import { HomeCard, NewLandlordModal, adminName, approveJob, jobEvent, jobTone } from './shared';
+import { HomeCard, NewLandlordModal, adminName, approveJob, jobEvent, jobTone, needsLandlord } from './shared';
 import { linkLeadLandlord } from './Switch';
 
 export function Approvals() {
@@ -36,12 +36,12 @@ function ApprovalList() {
       <Kpi icon={<Gauge size={18} />} tone="ok" label="Budgets under 70%" value={props.filter(p => p.used / p.budget < .7).length} caption={`of ${props.length} properties`} onClick={() => setTab('budgets')} />
     </div>
     <Tabs value={tab} onChange={setTab} items={[{ id: 'queue', label: 'Waiting approval', count: queue.length }, { id: 'requests', label: 'From Office Admins', count: reqs.length }, { id: 'budgets', label: 'Maintenance budgets' }, { id: 'decided', label: 'Decided', count: decided.length + doneReqs.length }]} />
-    {tab === 'queue' && <Card title="Jobs over the landlord's limit" sub="Click a job to see the budget, the quote and every message with the landlord. Then approve or decline.">
+    {tab === 'queue' && <Card title="Jobs waiting for your approval" sub="Every managed job comes here, under or over the limit. Over the limit, the landlord also approves an invoice before work starts. Click a job to see the budget and every message, then approve or decline.">
       {queue.length ? <div className="col" style={{ gap: 12 }}>{queue.map(j => { const p = L.prop(j.property)!; const ll = L.landlord(p.owner)!; const after = p.budget ? Math.round((p.used + j.price) / p.budget * 100) : 0; const last = sortComms(j.comms)[0]; return (
         <div key={j.id} className="apcard" role="button" tabIndex={0} onClick={() => s.go('approvals', j.id)}>
           <span className="tile t-warn" style={{ width: 44, height: 44 }}><Wrench size={20} /></span>
           <div className="stack grow" style={{ gap: 6 }}>
-            <div className="flex wrap" style={{ gap: 8 }}><b style={{ fontSize: 14 }}>{j.title}</b><span className="caption">{p.address}</span>{j.landlordOk ? <Chip tone="ok">Landlord said yes</Chip> : last?.dir === 'in' ? <Chip tone="info">Landlord replied</Chip> : null}</div>
+            <div className="flex wrap" style={{ gap: 8 }}><b style={{ fontSize: 14 }}>{j.title}</b><span className="caption">{p.address}</span><Chip tone={j.price > PLAN[ll.plan].limit ? 'warn' : 'ok'} dot={false}>{j.price > PLAN[ll.plan].limit ? 'Over the limit' : 'Under the limit'}</Chip>{j.followOf && <Chip tone="brand" dot={false}>Follow-up · from contractor</Chip>}{j.landlordOk ? <Chip tone="ok">Landlord said yes</Chip> : last?.dir === 'in' ? <Chip tone="info">Landlord replied</Chip> : null}</div>
             <span className="caption">{ll.name} · {ll.plan}% plan · limit {money(PLAN[ll.plan].limit)} · {L.contractor(j.contractor)?.name ?? 'No contractor'} · reported {j.reported}</span>
             <div className="flex" style={{ gap: 10 }}><div style={{ width: 260 }}><BudgetBar used={p.used} add={j.price} budget={p.budget} /></div><span className="caption">Budget after: <b style={{ color: after >= 90 ? 'var(--err)' : after >= 70 ? 'var(--warn)' : 'var(--ok)' }}>{after}%</b></span></div>
           </div>
@@ -83,8 +83,8 @@ function ApprovalPage({ id }: { id: string }) {
     <PageHeader crumbs={crumbsFor('approvals', s.go, j.title)} back={() => s.go('approvals')} title={`Approve ${j.title.toLowerCase()}?`}
       action={waiting && <div className="flex"><Btn kind="outline" icon={<XCircle size={16} />} onClick={() => setM('decline')}>Decline</Btn><Btn kind="outline" icon={<Mail size={16} />} onClick={() => setM('email')}>Email landlord</Btn><Btn icon={<CheckCircle2 size={16} />} onClick={() => approveJob(s, j, L)}>Approve {money(j.price)}</Btn></div>} />
     <DetailHead media={<span className="tile t-warn" style={{ width: 64, height: 64, borderRadius: 18 }}><Wrench size={28} /></span>} title={`${j.title} · ${money(j.price)}`}
-      chips={<><Chip tone={jobTone(j.status)}>{j.status}</Chip>{j.landlordOk && <Chip tone="ok">Landlord said yes</Chip>}</>}
-      meta={[['Home', p.address], ['Landlord', `${ll?.name} · ${ll?.plan}% plan`], ['Job limit', money(limit)], ['Over the limit by', money(Math.max(0, j.price - limit))]]} />
+      chips={<><Chip tone={jobTone(j.status)}>{j.status}</Chip>{j.followOf && <Chip tone="brand" dot={false}>Follow-up · from contractor</Chip>}{j.landlordOk && <Chip tone="ok">Landlord said yes</Chip>}</>}
+      meta={[['Home', p.address], ['Landlord', `${ll?.name} · ${ll?.plan}% plan`], ['Job limit', money(limit)], j.price > limit ? ['Over the limit by', money(j.price - limit)] : ['Under the limit by', money(limit - j.price)]]} />
     <PageTabs value={tab} onChange={setTab} items={[{ id: 'details', label: 'Details and budget' }, { id: 'comms', label: 'Communication', count: j.comms.length }]} />
     <div className="dgrid">
       <div className="col">
@@ -96,7 +96,7 @@ function ApprovalPage({ id }: { id: string }) {
             {hit ? <Note tone={hit >= 90 ? 'err' : 'warn'}>Approving takes the budget from {before}% to {after}%. {ll?.name} gets the {hit}% alert email.</Note> : <Note tone="ok">Approving takes the budget from {before}% to {after}%. No new alert.</Note>}
             {lb && lb.props.length > 1 && <span className="caption">{ll?.name} has {lb.props.length} properties. All budgets together: {money(lb.used)} of {money(lb.budget)} used ({lb.pct}%).</span>}
           </Card>
-          <Card title="The job"><p style={{ margin: 0, lineHeight: 1.6 }}>{j.note}</p><KV rows={[['Reported by', j.by], ['Reported', j.reported], ['Contractor', c ? `${c.name} · ★ ${c.rating}` : '—'], ['Quote', money(j.price)], ['Contractor cost', money(j.cost) + ' · staff only'], ['Office Admin', adminName(j.admin)]]} />
+          <Card title="The job"><p style={{ margin: 0, lineHeight: 1.6 }}>{j.note}</p><KV rows={[['Reported by', j.by], ['Reported', j.reported], ['Contractor', c ? `${c.name} · ★ ${c.rating}` : '—'], ['Hours', j.hours ? `${j.hours} at ${money(j.rate ?? c?.rate ?? 0)} an hour` : '—'], ['Budget amount', money(j.price)], ['Contractor cost', money(j.cost) + ' · staff only'], ['Office Admin', adminName(j.admin)]]} />
             <div className="photos">{['Problem', 'Close up', 'Quote page'].map((x, i) => <div key={x} className="ph" style={{ backgroundImage: `url(images/home${i + 1}.jpg)` }}><span>{x}</span></div>)}</div>
             <Btn kind="ghost" icon={<ArrowRight size={16} />} onClick={() => s.go('jobs', id)}>Open the full job</Btn></Card>
           <Card title="History"><Timeline items={[...j.events].reverse().map(e => ({ at: e.at, text: e.text, by: e.by }))} /></Card>
@@ -106,7 +106,7 @@ function ApprovalPage({ id }: { id: string }) {
           <CommsLog items={j.comms} to={ll?.email} onAdd={c2 => addComm(c2, 'Saved')} emptyText="No messages with the landlord yet." /></Card>}
       </div>
       <div className="col">
-        {waiting ? <ActionCard tone="warn" title="Your decision" text={`${money(j.price)} is ${money(j.price - limit)} over the ${money(limit)} limit.${j.landlordOk ? ' The landlord has said yes.' : ''}`}>
+        {waiting ? <ActionCard tone="warn" title="Your decision" text={j.price > limit ? `${money(j.price)} is ${money(j.price - limit)} over the ${money(limit)} limit.${needsLandlord(j, L) ? ' After you approve, the Office Admin sends the landlord an invoice to approve before work starts.' : ''}` : `${money(j.price)} is under the ${money(limit)} limit. Approve it and ${c?.name ?? 'the contractor'} gets the job.`}>
           <Btn block icon={<CheckCircle2 size={16} />} onClick={() => approveJob(s, j, L)}>Approve {money(j.price)}</Btn>
           <Btn block kind="outline" icon={<Mail size={16} />} onClick={() => setM('email')}>Email landlord first</Btn>
           <Btn block kind="ghost" icon={<XCircle size={16} />} onClick={() => setM('decline')}>Decline</Btn></ActionCard>
