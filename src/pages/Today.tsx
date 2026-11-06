@@ -4,14 +4,15 @@ import { useStore, useLookups, money, rentStatus, staff, type Route } from '../s
 import { ADMINS, PLAN, RENT_CHART, daysFrom, nowStamp } from '../data';
 import { Avatar, Bar, Btn, Card, Chip, Drawer, IBtn, KV, Kpi, Note, Tabs, Select } from '../ui';
 import { PageHeader } from '../Shell';
-import { approveJob, NewLandlordModal, overLimit } from './shared';
+import { approveJob, NewLandlordModal, overLimit, canAskLandlord } from './shared';
+import { LandlordModal } from './Decide';
 
 export default function Today() {
   const s = useStore();
   const L = useLookups();
   const [tab, setTab] = useState<'all' | 'overdue' | 'waiting' | 'owner'>('all');
   const [open, setOpen] = useState<null | { t: string; d: string; owner?: string; next: string; due: string; r: Route; id?: string }>(null);
-  const [newLL, setNewLL] = useState(false);
+  const [newLL, setNewLL] = useState(false); const [ll, setLl] = useState('');
   const waiting = s.jobs.filter(j => j.status === 'Waiting approval');
   const late = s.rent.filter(r => rentStatus(r).tone === 'err');
   const lateSum = late.reduce((a, r) => a + r.amount - r.paid, 0);
@@ -57,8 +58,8 @@ export default function Today() {
             <div className="lrow" key={j.id}>
               <span className="tile t-white" style={{ width: 36, height: 36 }}>{j.title.includes('Roof') ? <Home size={18} /> : j.title.includes('lock') ? <Lock size={18} /> : <Wrench size={18} />}</span>
               <button className="stack grow" style={{ border: 0, background: 'none', textAlign: 'left', padding: 0 }} onClick={() => s.go('approvals', j.id)}><span className="flex" style={{ gap: 6 }}><b>{j.title}</b><b style={{ color: 'var(--warn)' }}>{money(j.price)}</b></span><span className="caption">{p?.address.split(',')[0]} · limit {money(ll ? PLAN[ll.plan].limit : 0)}</span></button>
-              <IBtn sm icon={<MessageCircle size={16} />} label="Ask the landlord" onClick={() => { s.toast(`Quote sent to ${ll?.name} to approve`); s.log(`Asked ${ll?.name} to approve ${j.title} (${money(j.price)})`, 'Approvals & Budgets'); }} />
-              <IBtn sm kind="success" icon={<CircleCheck size={18} />} label="Approve" onClick={() => approveJob(s, j, L)} />
+              {canAskLandlord(j, L) && <IBtn sm icon={<MessageCircle size={16} />} label="Approve · send to the landlord" onClick={() => setLl(j.id)} />}
+              <IBtn sm kind="success" icon={<CircleCheck size={18} />} label="Approve · manage under the plan" onClick={() => approveJob(s, j, L, 'Under plan')} />
             </div>); })}
           {s.requests.filter(q => q.status === 'Waiting').slice(0, Math.max(0, 3 - Math.min(3, waiting.length))).map(q => <div className="lrow" key={q.id}>
             <span className="tile t-white" style={{ width: 36, height: 36 }}><Send size={18} /></span>
@@ -106,6 +107,7 @@ export default function Today() {
       </Card>
       {open && <AttentionDrawer a={open} onClose={() => setOpen(null)} />}
       {newLL && <NewLandlordModal onClose={() => setNewLL(false)} />}
+      {ll && s.jobs.some(j => j.id === ll) && <LandlordModal j={s.jobs.find(j => j.id === ll)!} onClose={() => setLl('')} />}
     </>
   );
 }
