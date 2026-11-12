@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { ClipboardCheck, AlertTriangle, Gauge, CheckCircle2, XCircle, Mail, Wrench, ArrowRight, MessageSquareReply, Phone, Send, UserPlus, PauseCircle, LockOpen } from 'lucide-react';
+import { ClipboardCheck, AlertTriangle, Gauge, CheckCircle2, XCircle, Mail, Wrench, ArrowRight, MessageSquareReply, Phone, Send, UserPlus, PauseCircle, LockOpen , Globe2 } from 'lucide-react';
+import { updateRecord, recordOf, nrlState, type NrlStatus } from '../nrl';
 import { useStore, useLookups, money, landlordBudget, budgetTone, type Route } from '../store';
-import { PLAN, nowStamp, type Comm, type Plan, type SupReq } from '../data';
+import { PLAN, nowStamp, type Comm, type Plan, type SupReq , ME_NAME } from '../data';
 import { ActionCard, Avatar, Bar, Btn, Card, Chip, CommModal, CommsLog, DetailHead, KV, Kpi, Note, PageTabs, Reason, Tabs, Timeline, Empty, sortComms, Modal, When } from '../ui';
 import { PageHeader, crumbsFor } from '../Shell';
 import { HomeCard, NewLandlordModal, adminName, jobTone, coverOf, canAskLandlord } from './shared';
@@ -123,7 +124,7 @@ function ApprovalPage({ id }: { id: string }) {
 }
 
 /* ================= REQUEST FROM AN OFFICE ADMIN ================= */
-const REQ_ICON: Record<string, React.ReactNode> = { 'New landlord': <UserPlus size={16} />, 'Plan change': <Gauge size={16} />, 'Pause contractor': <PauseCircle size={16} />, 'Unlock record': <LockOpen size={16} />, Other: <Send size={16} /> };
+const REQ_ICON: Record<string, React.ReactNode> = { 'New landlord': <UserPlus size={16} />, 'Plan change': <Gauge size={16} />, 'Pause contractor': <PauseCircle size={16} />, 'Unlock record': <LockOpen size={16} />, 'Tax status': <Globe2 size={16} />, Other: <Send size={16} /> };
 
 function RequestPage({ id }: { id: string }) {
   const s = useStore(); const L = useLookups(); const q = s.requests.find(r => r.id === id)!;
@@ -145,6 +146,7 @@ function RequestPage({ id }: { id: string }) {
     if (q.kind === 'Plan change' && ll && q.data?.plan) { s.setLandlords(ls => ls.map(l => l.id === ll.id ? { ...l, plan: +q.data!.plan as Plan, comms: [...l.comms, { id: 'cm' + Date.now(), at: nowStamp(), by: 'Sarah Khan', channel: 'Email', dir: 'out', subject: 'Your plan is changing', text: `Your plan moves to ${q.data!.plan}% from 1 Nov 2026. Repairs up to ${money(PLAN[+q.data!.plan as Plan].limit)} go ahead without asking you.` }] } : l)); answer(true, `${ll.name} moves to the ${q.data.plan}% plan from 1 Nov 2026. Landlord emailed.`); }
     else if (q.kind === 'Pause contractor' && con) { s.setContractors(cs => cs.map(c => c.id === con.id ? { ...c, status: 'Paused', reason: q.data?.reason ?? 'Asked by Office Admin' } : c)); answer(true, `${con.name} paused. They can't be given new jobs.`); }
     else if (q.kind === 'Unlock record' && rec) { s.setLocked(ls => ls.map(r => r.id === rec.id ? { ...r, versions: [{ when: nowStamp(), who: 'Sarah Khan', reason: q.about }, ...r.versions] } : r)); answer(true, 'Unlocked. The earlier version is kept.'); }
+    else if (q.kind === 'Tax status' && ll && q.data?.status) { updateRecord(ll.id, { status: q.data.status as NrlStatus, decidedBy: ME_NAME, decidedAt: nowStamp(), reason: q.about, from: '1 Nov 2026', asked: undefined, abroad: q.data.status === 'UK resident' ? 'No' : 'Yes' }, ME_NAME, `Decided ${q.data.status} after ${from}'s request`); answer(true, `Tax status set to ${q.data.status}.`, { route: 'tax', id: ll.id }); }
     else answer(true, 'Done.');
     setM('');
   };
@@ -158,7 +160,8 @@ function RequestPage({ id }: { id: string }) {
       <div className="col">
         <Card title={`What ${from.split(' ')[0]} asked`}><p style={{ margin: 0, lineHeight: 1.6 }}>{q.about}</p>
           {q.kind === 'New landlord' && q.data && <KV rows={[['Name', q.data.name], ['Email (login)', q.data.email], ['Phone', q.data.phone], ['Billing address', q.data.billing || '—'], ['Plan they want', `${q.data.plan}% · job limit ${money(PLAN[+q.data.plan as Plan].limit)}`], ['Office Admin', from]]} />}
-          {ll && <KV rows={[['Landlord', ll.name], ['Plan now', `${ll.plan}%`], ['Asked for', `${q.data?.plan}%`]]} />}
+          {ll && q.kind === 'Plan change' && <KV rows={[['Landlord', ll.name], ['Plan now', `${ll.plan}%`], ['Asked for', `${q.data?.plan}%`]]} />}
+          {ll && q.kind === 'Tax status' && <KV rows={[['Landlord', ll.name], ['Status now', recordOf(nrlState(), ll.id).status], ['Suggested', q.data?.status ?? '—'], ['Lives in', recordOf(nrlState(), ll.id).country ?? 'Not given']]} />}
           {con && <KV rows={[['Contractor', con.name], ['Trade', con.trade], ['Status now', con.status], ['Reason', q.data?.reason ?? '—']]} />}
           {rec && <KV rows={[['Record', rec.title], ['Type', rec.kind], ['Locked', `${rec.locked} by ${rec.by}`], ['Earlier versions', String(rec.versions.length)]]} />}
           {dup && <Note tone="err">{dup.name} ({dup.email}) is already a landlord. Decline this request or open their record.</Note>}
@@ -185,7 +188,7 @@ function RequestPage({ id }: { id: string }) {
       answer(true, `Landlord account created and login email sent from Outlook.`, { route: 'landlords', id: lid });
     }} />}
     {m === 'approve' && <Modal title="Approve this request?" sub={q.title} onClose={() => setM('')} footer={<><Btn kind="outline" onClick={() => setM('')}>Cancel</Btn><Btn icon={<CheckCircle2 size={16} />} onClick={approve}>Approve</Btn></>}>
-      <Note>{q.kind === 'Plan change' ? `${ll?.name} moves to the ${q.data?.plan}% plan from 1 Nov 2026 and gets an email.` : q.kind === 'Pause contractor' ? `${con?.name} is paused and can't be given new jobs. Jobs they already have carry on.` : q.kind === 'Unlock record' ? 'The record is unlocked. The current version is saved first.' : 'The request is marked done.'}</Note></Modal>}
+      <Note>{q.kind === 'Plan change' ? `${ll?.name} moves to the ${q.data?.plan}% plan from 1 Nov 2026 and gets an email.` : q.kind === 'Pause contractor' ? `${con?.name} is paused and can't be given new jobs. Jobs they already have carry on.` : q.kind === 'Unlock record' ? 'The record is unlocked. The current version is saved first.' : q.kind === 'Tax status' ? `${ll?.name}'s tax status becomes “${q.data?.status}”. Saved in their tax history.` : 'The request is marked done.'}</Note></Modal>}
     {m === 'decline' && <Reason danger title="Decline this request" sub={`${from} sees your reason.`} cta="Decline" options={q.kind === 'New landlord' ? ['Landlord already exists', 'Not ready yet, call them again', 'Not a fit for LSP'] : ['Not this time', 'Need more information, call me', 'Not needed']} onClose={() => setM('')} onDone={r => { answer(false, r); setM(''); }} />}
   </>;
 }

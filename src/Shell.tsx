@@ -1,9 +1,10 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   Settings,
-  LayoutDashboard, ArrowRightLeft, Users, Mail, User, KeyRound, UserCheck, Home, UserPlus, Briefcase, Wrench, ClipboardCheck, HardHat, ArrowLeft,
+  Globe2, LayoutDashboard, ArrowRightLeft, Users, Mail, User, KeyRound, UserCheck, Home, UserPlus, Briefcase, Wrench, ClipboardCheck, HardHat, ArrowLeft,
   CircleCheck, ShieldCheck, PoundSterling, History, Lock, FileBarChart, PanelLeft, LogOut, Search, Bell, CalendarDays, ChevronRight, ArrowRight, Eye, EyeOff, ShieldAlert,
 } from 'lucide-react';
+import { useTaxAlerts } from './pages/Tax';
 import { useStore, useLookups, staff, type Route } from './store';
 import { LET_STAGES, daysFrom } from './data';
 import { Btn, IBtn, Note } from './ui';
@@ -12,15 +13,16 @@ export const NAV: { group: string; items: { id: Route; label: string; icon: type
   { group: 'Overview', items: [{ id: 'today', label: 'Today', icon: LayoutDashboard }, { id: 'team', label: 'Team Work', icon: Users }, { id: 'enquiries', label: 'Enquiries', icon: Mail }, { id: 'switch', label: 'Planned Switch', icon: ArrowRightLeft }] },
   { group: 'Homes & People', items: [{ id: 'landlords', label: 'Landlords', icon: User }, { id: 'lettings', label: 'Lettings', icon: KeyRound }, { id: 'tenants', label: 'Tenants', icon: UserCheck }, { id: 'properties', label: 'Properties', icon: Home }] },
   { group: 'Partners & Work', items: [{ id: 'signups', label: 'Sign-Ups', icon: UserPlus }, { id: 'clients', label: 'Clients', icon: Briefcase }, { id: 'contractors', label: 'Contractors', icon: HardHat }, { id: 'jobs', label: 'Jobs', icon: Wrench }, { id: 'inspections', label: 'Inspections', icon: ClipboardCheck }] },
-  { group: 'Checks & Money', items: [{ id: 'approvals', label: 'Approvals & Requests', icon: CircleCheck }, { id: 'safety', label: 'Safety & Compliance', icon: ShieldCheck }, { id: 'rent', label: 'Rent & Invoices', icon: PoundSterling }] },
+  { group: 'Checks & Money', items: [{ id: 'approvals', label: 'Approvals & Requests', icon: CircleCheck }, { id: 'safety', label: 'Safety & Compliance', icon: ShieldCheck }, { id: 'rent', label: 'Rent & Invoices', icon: PoundSterling }, { id: 'tax', label: 'Overseas Tax', icon: Globe2 }] },
   { group: 'Records', items: [{ id: 'records', label: 'Records & History', icon: History }, { id: 'support', label: 'Support Access', icon: Lock }, { id: 'reports', label: 'Reports', icon: FileBarChart }, { id: 'settings', label: 'Settings', icon: Settings }] },
 ];
 export const LABEL: Record<Route, string> = Object.fromEntries(NAV.flatMap(g => g.items.map(i => [i.id, i.label]))) as Record<Route, string>;
 const GROUP: Record<Route, string> = Object.fromEntries(NAV.flatMap(g => g.items.map(i => [i.id, g.group]))) as Record<Route, string>;
 
 export function useCounts() {
-  const s = useStore();
+  const s = useStore(); const tax = useTaxAlerts(s);
   return {
+    tax: tax.blocked.length,
     enquiries: s.enquiries.filter(e => e.stage === 'New').length,
     lettings: s.applicants.filter(a => !a.rejected && (a.stage === 4 || (a.stage === 0 && !a.admin))).length,
     tenants: s.tenants.filter(t => t.status === 'Moving out').length,

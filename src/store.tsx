@@ -7,9 +7,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 export type Route =
   | 'today' | 'team' | 'enquiries' | 'switch' | 'landlords' | 'lettings' | 'tenants' | 'properties' | 'signups' | 'clients'
-  | 'contractors' | 'jobs' | 'inspections' | 'approvals' | 'safety' | 'rent' | 'records' | 'support' | 'reports' | 'settings';
+  | 'contractors' | 'jobs' | 'inspections' | 'approvals' | 'safety' | 'rent' | 'tax' | 'records' | 'support' | 'reports' | 'settings';
 
-export const ROUTES: Route[] = ['today', 'team', 'enquiries', 'switch', 'landlords', 'lettings', 'tenants', 'properties', 'signups', 'clients', 'contractors', 'jobs', 'inspections', 'approvals', 'safety', 'rent', 'records', 'support', 'reports', 'settings'];
+export const ROUTES: Route[] = ['today', 'team', 'enquiries', 'switch', 'landlords', 'lettings', 'tenants', 'properties', 'signups', 'clients', 'contractors', 'jobs', 'inspections', 'approvals', 'safety', 'rent', 'tax', 'records', 'support', 'reports', 'settings'];
 type Setter<T> = (fn: (prev: T[]) => T[]) => void;
 export type PayoutStatus = 'Scheduled' | 'Paid' | 'On hold';
 interface Store {

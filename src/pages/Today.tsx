@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Mail, UserCheck, UserPlus, TriangleAlert, Home, MessageCircle, CircleCheck, Wrench, Lock, ArrowRight, TrendingUp, Plus, CalendarDays, Clock, UserX, Send } from 'lucide-react';
+import { useTaxAlerts } from './Tax';
 import { useStore, useLookups, money, rentStatus, staff, type Route } from '../store';
 import { ADMINS, PLAN, RENT_CHART, daysFrom, nowStamp } from '../data';
 import { Avatar, Bar, Btn, Card, Chip, Drawer, IBtn, KV, Kpi, Note, Tabs, Select } from '../ui';
@@ -18,7 +19,10 @@ export default function Today() {
   const lateSum = late.reduce((a, r) => a + r.amount - r.paid, 0);
   const tasksBy = (id: string) => s.tasks.filter(t => t.admin === id && !t.done);
 
+  const taxA = useTaxAlerts(s);
   const attention = [
+    ...taxA.blocked.map(({ l, why }) => ({ kind: 'overdue', t: `Payout blocked · ${l.name}`, d: `Overseas tax: ${why}`, owner: l.admin, next: 'Fix it on the tax page before the 20 Oct payout', due: '20 Oct', r: 'tax' as Route, id: l.id as string | undefined, tone: 'err' as const })),
+    ...taxA.due.map(t => ({ kind: 'waiting', t: `${t.title} · due ${t.due.replace(' 2026', '')}`, d: 'Overseas tax · HMRC', owner: undefined, next: t.kind === 'Quarterly payment' ? 'Pay HMRC and record the payment' : 'Mark done when sent', due: t.due.replace(' 2026', ''), r: 'tax' as Route, id: (t.kind === 'Quarterly payment' ? 'hmrc' : 'deadlines') as string | undefined, tone: 'warn' as const })),
     ...s.jobs.filter(j => j.urgent && j.status === 'New').map(j => ({ kind: 'overdue', t: 'Emergency: ' + j.title, d: L.prop(j.property)?.address ?? '', owner: j.admin, next: 'Assign a contractor now', due: 'Today', r: 'jobs' as Route, id: j.id, tone: 'err' as const })),
     ...waiting.map(j => ({ kind: 'waiting', t: `${j.title} · ${money(j.price)}`, d: (L.prop(j.property)?.address ?? '') + (overLimit(j, L) ? ' · over the limit' : ' · under the limit'), owner: j.admin, next: 'Approve or ask the landlord', due: j.reported.split(',')[0].replace(' 2026', ''), r: 'approvals' as Route, id: j.id, tone: 'warn' as const })),
     ...s.requests.filter(q => q.status === 'Waiting').map(q => ({ kind: 'waiting', t: `${q.kind} · ${q.title.split(': ').slice(-1)[0]}`, d: `Asked by ${staff(q.from)?.name} · ${q.about}`, owner: q.from, next: q.kind === 'New landlord' ? 'Create the landlord account' : 'Approve or decline the request', due: q.at.split(',')[0].replace(' 2026', ''), r: 'approvals' as Route, id: q.id, tone: 'warn' as const })),

@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Search, Check, Mail, Home, ArrowRight, Phone } from 'lucide-react';
+import { updateRecord } from '../nrl';
 import { useStore, useLookups, money, staff, type Lookups, type Route } from '../store';
 import { ME, ME_NAME, SUPERVISOR, PORTAL, INSP_KINDS, PLAN, nowStamp, type InspKind, type InspScope, type Job, type JobEvent, type Line, type Plan, type Property } from '../data';
 import { Btn, Chip, Field, Modal, Note, Select, Text, Area, Avatar, PhotoPicker, MiniSearch, dateLabel } from '../ui';
@@ -123,6 +124,7 @@ export function NewLandlordModal({ onClose, prefill, onCreated, from, skipProper
   const [q, setQ] = useState(prefill?.name ?? '');
   const [f, setF] = useState({ name: prefill?.name ?? '', email: prefill?.email ?? '', phone: prefill?.phone ?? '', billing: prefill?.billing ?? '', admin: prefill?.admin ?? 'et' });
   const [plan, setPlan] = useState<Plan>(prefill?.plan ?? 16);
+  const [abroad, setAbroad] = useState<{ v: 'No' | 'Yes' | 'Not sure'; country: string }>({ v: 'No', country: '' });
   const [start, setStart] = useState('2026-11-01');
   const [prop, setProp] = useState({ address: '', area: '', type: 'House' as Property['type'], beds: '3', rooms: '5', rent: '', budget: '1200', photo: '' });
   const matches = q.trim().length > 1 ? s.landlords.filter(l => (l.name + l.email).toLowerCase().includes(q.toLowerCase())) : [];
@@ -131,6 +133,7 @@ export function NewLandlordModal({ onClose, prefill, onCreated, from, skipProper
     const id = 'L' + (s.landlords.length + 1) + (Date.now() % 100);
     s.setLandlords(ls => [{ id, ...f, plan, start: dateLabel(start), status: 'Invite sent', bank: '—', comms: [{ id: 'cm' + Date.now(), at: nowStamp(), by: 'Sarah Khan', channel: 'Email', dir: 'out', subject: 'Your Genesis landlord login', text: 'Login email sent from Outlook.' }] }, ...ls]);
     if (prop.address) s.setProperties(ps => [{ id: 'P' + (Date.now() % 10000), address: prop.address, area: prop.area || '—', type: prop.type, beds: +prop.beds, rooms: prop.type === 'HMO' ? +prop.rooms : undefined, baths: 1, managed: true, owner: id, rent: +prop.rent || 0, status: 'Vacant', admin: f.admin, photo: prop.photo || 'images/home1.jpg', budget: +prop.budget || 0, used: 0, gas: true, added: '15 Oct 2026' }, ...ps]);
+    if (abroad.v !== 'No') updateRecord(id, { abroad: abroad.v, country: abroad.country || undefined, status: 'Review pending' }, 'Sarah Khan', `New landlord. Lives outside the UK: ${abroad.v}${abroad.country ? ` (${abroad.country})` : ''}. Set to Review pending: payouts blocked until the tax status is decided.`);
     s.log(`Created landlord ${f.name} on the ${plan}% plan${prop.address ? ` with ${prop.address}` : ''} and sent the login email`, 'Landlords');
     s.toast(`Login email sent to ${f.email}`);
     onClose();
@@ -153,6 +156,9 @@ export function NewLandlordModal({ onClose, prefill, onCreated, from, skipProper
       <Field label="Phone"><Text value={f.phone} onChange={v => setF({ ...f, phone: v })} placeholder="07700 900000" /></Field>
       <Field label="Office Admin in charge"><Select value={f.admin} onChange={v => setF({ ...f, admin: v })} options={L.admins.map(a => ({ value: a.id, label: a.name }))} /></Field>
       <div style={{ gridColumn: '1/-1' }}><Field label="Billing address"><Text value={f.billing} onChange={v => setF({ ...f, billing: v })} placeholder="House, street, town, postcode" /></Field></div>
+      <Field label="Does this landlord live outside the UK?" hint="6 months or more a year abroad. If yes, LSP may have to keep back tax."><Select value={abroad.v} onChange={v => setAbroad({ ...abroad, v: v as 'No' | 'Yes' | 'Not sure' })} options={[{ value: 'No', label: 'No, lives in the UK' }, { value: 'Yes', label: 'Yes' }, { value: 'Not sure', label: 'Not sure yet' }]} /></Field>
+      {abroad.v !== 'No' ? <Field label="Country and city"><Text value={abroad.country} onChange={v => setAbroad({ ...abroad, country: v })} placeholder="e.g. Spain (Málaga)" /></Field> : <div />}
+      {abroad.v !== 'No' && <div style={{ gridColumn: '1/-1' }}><Note tone="warn">Their tax status starts as Review pending. Payouts are blocked until it is decided on the landlord page.</Note></div>}
     </div>}
     {step === 2 && <><div className="grid g4">{([10, 12, 16, 20] as Plan[]).map(p => <button key={p} className={`choice${plan === p ? ' on' : ''}`} onClick={() => setPlan(p)}><b style={{ fontSize: 20 }}>{p}%</b><span className="caption" style={{ fontWeight: 700 }}>{vatActive(s.vat) ? `${+(p * (1 + s.vat.rate / 100)).toFixed(2)}% incl. VAT` : 'No VAT charged'}</span><span className="small">{p === 10 ? 'Management Only' : `Job limit ${money(PLAN[p].limit)}`}</span><span className="caption">{p === 10 ? 'No repairs included. Every repair needs the landlord’s OK.' : 'Repairs above this come to you to approve.'}</span></button>)}</div>
       <Field label="Agreement start date"><input className="input" type="date" value={start} onChange={e => setStart(e.target.value)} /></Field></>}
